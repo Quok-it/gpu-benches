@@ -10,6 +10,15 @@ mkdir -p "$RESULTS_DIR/gpu-benches"
 echo "Starting GPU benchmarks collection..."
 echo "Results will be saved to: $RESULTS_DIR/gpu-benches"
 
+# gpu-stream benchmark
+echo ""
+echo "=== GPU Stream Microbenchmark ==="
+cd gpu-stream
+make clean && make
+./cuda-stream > "$RESULTS_DIR/gpu-benches/gpu-stream-results.txt"
+echo "GPU Stream microbenchmark completed"
+cd ..
+
 # gpu-cache benchmark (needs sudo)
 echo ""
 echo "=== GPU Cache Microbenchmark ==="
