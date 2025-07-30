@@ -1,9 +1,9 @@
-# GPU Benchmarks Collection Specification
+# Microbenchmarks Suite Specification
 
 ## Overview
-This collection contains GPU memory hierarchy benchmarks that test different aspects of GPU memory performance, from cache behavior to CPU-GPU data transfers.
+This is Quok.it's microbenchmarking suite. It is separated into Memory, Compute, and System tests. 
 
-## Benchmarks Included
+## Memory Benchmarks
 
 ### gpu-cache - GPU Cache Hierarchy Benchmark
 Tests GPU memory hierarchy (L1/L2 cache, DRAM) performance with varying working set sizes.
@@ -20,7 +20,7 @@ Tests GPU memory hierarchy (L1/L2 cache, DRAM) performance with varying working 
 | l2_read | float | GB/s | L2 cache read bandwidth (requires sudo) |
 | l2_store | float | GB/s | L2 cache store bandwidth (requires sudo) |
 
-### gpu-l2-cache - GPU L2 Cache Contention Benchmark  
+### gpu-l2-cache - GPU L2 Cache Benchmark  
 Tests L2 cache performance under multi-block contention with fixed per-block working sets.
 
 **Output Fields:**
@@ -55,16 +55,6 @@ Tests unified memory performance with automatic CPU-GPU memory management.
 | spread | float | % | Measurement variance |
 | bandwidth | float | GB/s | Effective memory bandwidth |
 
-## Requirements
-- NVIDIA GPU with CUDA support
-- CUDA toolkit and runtime
-- Root access for performance counters (gpu-cache, gpu-l2-cache)
-- CUPTI libraries for detailed metrics
-- Sufficient system memory for unified memory tests
+## Compute Benchmarks
 
-## Output Files
-- `gpu-cache-results.txt`: Cache hierarchy performance data
-- `gpu-l2-cache-results.txt`: L2 cache contention analysis
-- `cuda-memcpy-results.txt`: CPU-GPU transfer performance
-- `um-stream-results.txt`: Unified memory bandwidth data
-- Various `README.md` files: Documentation for each benchmark
+## System Benchmarks

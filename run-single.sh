@@ -3,58 +3,51 @@ set -e
 
 cd "$BENCHMARK_DIR"
 
-# Create results directory
+# create results directory
 mkdir -p "$RESULTS_DIR/gpu-benches"
 
+# TODO: convert this to prometheus exporter rather than txt file
 echo "Starting GPU benchmarks collection..."
 echo "Results will be saved to: $RESULTS_DIR/gpu-benches"
 
-# GPU Cache benchmark (needs sudo for performance counters)
+# gpu-cache benchmark (needs sudo)
 echo ""
-echo "=== GPU Cache Benchmark ==="
+echo "=== GPU Cache Microbenchmark ==="
 cd gpu-cache
 make clean && make
 if sudo -n true 2>/dev/null; then
-    echo "Running with performance counters (sudo available)"
     sudo ./cuda-cache > "$RESULTS_DIR/gpu-benches/gpu-cache-results.txt"
-else
-    echo "Running without performance counters (no sudo)"
-    ./cuda-cache > "$RESULTS_DIR/gpu-benches/gpu-cache-results.txt"
 fi
-echo "GPU Cache benchmark completed"
+echo "GPU Cache microbenchmark completed"
 cd ..
 
-# GPU L2 Cache benchmark  
+# gpu-l2-cache benchmark (needs sudo)
 echo ""
-echo "=== GPU L2 Cache Benchmark ==="
+echo "=== GPU L2 Cache Microbenchmark ==="
 cd gpu-l2-cache
 make clean && make
 if sudo -n true 2>/dev/null; then
-    echo "Running with performance counters (sudo available)"
     sudo ./cuda-l2-cache > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.txt"
-else
-    echo "Running without performance counters (no sudo)"
-    ./cuda-l2-cache > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.txt"
 fi
-echo "GPU L2 Cache benchmark completed"
+echo "GPU L2 Cache microbenchmark completed"
 cd ..
 
-# CUDA Memory Copy benchmark
+# cuda-memcpy benchmark
 echo ""
-echo "=== CUDA Memory Copy Benchmark ==="
+echo "=== CUDA Memory Copy Microbenchmark ==="
 cd cuda-memcpy
 make clean && make
 ./cuda-memcpy > "$RESULTS_DIR/gpu-benches/cuda-memcpy-results.txt"
-echo "CUDA Memory Copy benchmark completed"
+echo "CUDA Memory Copy microbenchmark completed"
 cd ..
 
-# Unified Memory Stream benchmark
+# um-stream benchmark
 echo ""
-echo "=== Unified Memory Stream Benchmark ==="
+echo "=== Unified Memory Stream Microbenchmark ==="
 cd um-stream
 make clean && make
 ./um-stream > "$RESULTS_DIR/gpu-benches/um-stream-results.txt"
-echo "Unified Memory Stream benchmark completed"
+echo "Unified Memory Stream microbenchmark completed"
 cd ..
 
 # Copy README files for reference

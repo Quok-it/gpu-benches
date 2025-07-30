@@ -1,15 +1,15 @@
 #!/bin/bash
-# Dependencies for GPU benchmarks collection
+# dependencies for microbenchmarks
 
-echo "Installing dependencies for GPU benchmarks..."
+echo "Installing dependencies for microbenchmarks..."
 
-# Update package lists
+# update package lists
 apt-get update
 
-# Install build essentials
+# install build essentials
 apt-get install -y build-essential
 
 # CUDA toolkit should be pre-installed in container
-# CUPTI should be available in CUDA installation
+# CUPTI should also be available in CUDA installation so lowk need nothing else
 
-echo "Dependencies installation completed"
+echo "Dependencies installation completed!"
