@@ -44,18 +44,18 @@ for (int iter = 0; iter < iters; iter++) {
 make
 
 # Run the benchmark
-./cuda-cache
+sudo ./cuda-cache
 ```
 
 ## Output
 
 ```
      data set   exec time     spread        Eff. bw       DRAM read      DRAM write         L2 read       L2 store
-         1 kB        71ms       0.3%   14944.8 GB/s         0 GB/s          0 GB/s          0 GB/s          0 GB/s 
-        32 kB        34ms       6.6%   33263.5 GB/s         0 GB/s          0 GB/s          0 GB/s          0 GB/s 
-       280 kB        76ms      75.1%   27931.0 GB/s         0 GB/s          0 GB/s          0 GB/s          0 GB/s 
-     10380 kB       155ms      43.4%   11045.5 GB/s         0 GB/s          0 GB/s          0 GB/s          0 GB/s 
-    280692 kB       164ms      14.0%    7714.7 GB/s         0 GB/s          0 GB/s          0 GB/s          0 GB/s 
+         384 kB       123ms      63.9%   20644.4 GB/s         0 GB/s          0 GB/s      16803 GB/s          0 GB/s 
+       448 kB       129ms      63.6%   19713.7 GB/s         0 GB/s          0 GB/s      16652 GB/s          0 GB/s 
+       524 kB       134ms      43.6%   12953.7 GB/s         0 GB/s          0 GB/s      11747 GB/s          0 GB/s 
+       612 kB       135ms      45.3%   13594.1 GB/s         0 GB/s          0 GB/s      12856 GB/s          0 GB/s 
+       716 kB       137ms      44.9%   13431.1 GB/s         0 GB/s          0 GB/s      12859 GB/s          0 GB/s
 ```
 
 **Column Descriptions:**

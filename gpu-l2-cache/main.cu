@@ -78,17 +78,18 @@ template <int N> void measure(int blockRun) {
     double t2 = dtime();
     time.add(t2 - t1);
 
-    /* measureDRAMBytesStart();
-     callKernel<N, blockSize>(blockCount, blockRun);
-     auto metrics = measureDRAMBytesStop();
-     dram_read.add(metrics[0]);
-     dram_write.add(metrics[1]);
+    measureDRAMBytesStart();
+    callKernel<N, blockSize>(blockCount, blockRun);
+    auto metrics = measureDRAMBytesStop();
+    dram_read.add(metrics[0]);
+    dram_write.add(metrics[1]);
 
-     measureL2BytesStart();
-     callKernel<N, blockSize>(blockCount, blockRun);
-     metrics = measureL2BytesStop();
-     L2_read.add(metrics[0]);
-     L2_write.add(metrics[1]);*/
+    measureL2BytesStart();
+    callKernel<N, blockSize>(blockCount, blockRun);
+    metrics = measureL2BytesStop();
+    L2_read.add(metrics[0]);
+    L2_write.add(metrics[1]);
+    
     GPU_ERROR(cudaFree(dA));
     GPU_ERROR(cudaFree(dB));
   }
