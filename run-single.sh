@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# set default directories if not provided
+BENCHMARK_DIR=${BENCHMARK_DIR:-$(pwd)}
+RESULTS_DIR=${RESULTS_DIR:-$(pwd)/results}
+
 cd "$BENCHMARK_DIR"
 
 # create results directory
@@ -9,14 +13,6 @@ mkdir -p "$RESULTS_DIR/gpu-benches"
 # TODO: convert this to prometheus exporter rather than txt file
 echo "Starting GPU benchmarks collection..."
 echo "Results will be saved to: $RESULTS_DIR/gpu-benches"
-
-# Check if CUDA is available
-if ! command -v nvcc &> /dev/null; then
-    echo "ERROR: nvcc (CUDA compiler) not found in PATH"
-    echo "Please ensure CUDA toolkit is installed and in PATH"
-    echo "Common locations: /usr/local/cuda/bin, /opt/cuda/bin"
-    exit 1
-fi
 
 # gpu-stream benchmark
 echo ""
