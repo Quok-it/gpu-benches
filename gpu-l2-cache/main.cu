@@ -48,7 +48,6 @@ template <int N> void measure(int blockRun) {
   GPU_ERROR(cudaGetDevice(&deviceId));
   GPU_ERROR(cudaGetDeviceProperties(&prop, deviceId));
   std::string deviceName = prop.name;
-  int smCount = prop.multiProcessorCount;
   int maxActiveBlocks = 0;
   GPU_ERROR(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
       &maxActiveBlocks, sumKernel<N, blockSize>, blockSize, 0));
@@ -89,7 +88,7 @@ template <int N> void measure(int blockRun) {
     metrics = measureL2BytesStop();
     L2_read.add(metrics[0]);
     L2_write.add(metrics[1]);
-    
+
     GPU_ERROR(cudaFree(dA));
     GPU_ERROR(cudaFree(dB));
   }
