@@ -50,10 +50,12 @@ sudo ./cuda-l2-cache
 
 ```
      data set   exec time     spread       Eff. bw
-       512 kB      1536 kB        10ms       0.7%   10532.2 GB/s        0 GB/s      0 GB/s      0 GB/s      0 GB/s 
-       512 kB     36864 kB        14ms       0.5%    7663.3 GB/s        0 GB/s      0 GB/s      0 GB/s      0 GB/s 
-       512 kB     48128 kB        23ms       0.5%    4646.5 GB/s        0 GB/s      0 GB/s      0 GB/s      0 GB/s 
-       512 kB    256000 kB        32ms       0.4%    3241.2 GB/s        0 GB/s      0 GB/s      0 GB/s      0 GB/s 
+       512 kB   3032064 kB        34ms       1.5%    3118.5 GB/s     3119 GB/s      0 GB/s   3119 GB/s      0 GB/s 
+       512 kB   3335168 kB        34ms       1.5%    3099.4 GB/s     3099 GB/s      0 GB/s   3099 GB/s      0 GB/s 
+       512 kB   3668480 kB        34ms       1.6%    3085.5 GB/s     3086 GB/s      0 GB/s   3086 GB/s      0 GB/s 
+       512 kB   4035072 kB        34ms       1.6%    3065.5 GB/s     3065 GB/s      0 GB/s   3065 GB/s      0 GB/s 
+       512 kB   4438528 kB        34ms       0.8%    3053.2 GB/s     3053 GB/s      1 GB/s   3053 GB/s      0 GB/s 
+       512 kB   4881920 kB        35ms       0.0%    3030.6 GB/s     3031 GB/s      1 GB/s   3031 GB/s      0 GB/s 
 ```
 
 **Column Descriptions:**

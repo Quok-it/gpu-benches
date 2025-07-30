@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
         for(int d = 0; d < deviceCount; d++) {
             GPU_ERROR(cudaSetDevice(d));
             MeasurementSeries time;
-            for (int sample = 0; sample < 5; sample++) {
+            for (int sample = 0; sample < 50; sample++) {
                 memset(host_buffer, 0, buffer_size_bytes);
                 double t1 = dtime();
                 for (int stream = 0; stream < num_streams; stream++) {
