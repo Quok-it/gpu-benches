@@ -98,18 +98,17 @@ template <int N, int blockSize> void measure() {
     GPU_ERROR(cudaEventElapsedTime(&milliseconds, start, stop));
     time.add(milliseconds / 1000);
 
-    /*    measureDRAMBytesStart();
-        callKernel<N, iters, blockSize>(blockCount);
-        auto metrics = measureDRAMBytesStop();
-        dram_read.add(metrics[0]);
-        dram_write.add(metrics[1]);
+    measureDRAMBytesStart();
+    callKernel<N, iters, blockSize>(blockCount);
+    auto metrics = measureDRAMBytesStop();
+    dram_read.add(metrics[0]);
+    dram_write.add(metrics[1]);
 
-        measureL2BytesStart();
-        callKernel<N, iters, blockSize>(blockCount);
-        metrics = measureL2BytesStop();
-        L2_read.add(metrics[0]);
-        L2_write.add(metrics[1]);
-    */
+    measureL2BytesStart();
+    callKernel<N, iters, blockSize>(blockCount);
+    metrics = measureL2BytesStop();
+    L2_read.add(metrics[0]);
+    L2_write.add(metrics[1]);
 
     GPU_ERROR(cudaFree(dA - i));
     GPU_ERROR(cudaFree(dB - i));
