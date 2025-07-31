@@ -1,6 +1,6 @@
-#include "../MeasurementSeries.hpp"
-#include "../dtime.hpp"
-#include "../gpu-error.h"
+#include "../../MeasurementSeries.hpp"
+#include "../../dtime.hpp"
+#include "../../gpu-error.h"
 #include <cooperative_groups.h>
 #include <iomanip>
 #include <iostream>
