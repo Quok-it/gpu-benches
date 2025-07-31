@@ -8,7 +8,7 @@ NAME 		:= um-stream
 PREFIX		:= .
 
 
-$(PREFIX)/$(NAME): main.cu Makefile ../dtime.hpp ../MeasurementSeries.hpp ../gpu-error.h
+$(PREFIX)/$(NAME): main.cu Makefile ../../dtime.hpp ../../MeasurementSeries.hpp ../../gpu-error.h
 	$(NVCC) $(NVCCFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
 
 clean:
