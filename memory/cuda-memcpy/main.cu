@@ -1,8 +1,8 @@
 #include <iomanip>
 #include <iostream>
-#include "../MeasurementSeries.hpp"
-#include "../dtime.hpp"
-#include "../gpu-error.h"
+#include "../../MeasurementSeries.hpp"
+#include "../../dtime.hpp"
+#include "../../gpu-error.h"
 using namespace std;
 
 int main(int argc, char** argv) {

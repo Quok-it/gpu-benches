@@ -1,8 +1,8 @@
-#include "../MeasurementSeries.hpp"
-#include "../dtime.hpp"
-#include "../gpu-clock.cuh"
-#include "../gpu-error.h"
-#include "../metrics.cuh"
+#include "../../MeasurementSeries.hpp"
+#include "../../dtime.hpp"
+#include "../../gpu-clock.cuh"
+#include "../../gpu-error.h"
+#include "../../metrics.cuh"
 #include <iomanip>
 #include <iostream>
 #include <map>

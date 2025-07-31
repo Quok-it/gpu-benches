@@ -1,6 +1,6 @@
-#include "../MeasurementSeries.hpp"
-#include "../dtime.hpp"
-#include "../gpu-error.h"
+#include "../../MeasurementSeries.hpp"
+#include "../../dtime.hpp"
+#include "../../gpu-error.h"
 #include <iomanip>
 #include <iostream>
 using namespace std;

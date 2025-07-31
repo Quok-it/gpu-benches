@@ -1,7 +1,7 @@
-#include "../MeasurementSeries.hpp"
-#include "../dtime.hpp"
-#include "../gpu-error.h"
-#include "../gpu-metrics/gpu-metrics.hpp"
+#include "../../MeasurementSeries.hpp"
+#include "../../dtime.hpp"
+#include "../../gpu-error.h"
+#include "../../gpu-metrics/gpu-metrics.hpp"
 #include <iomanip>
 #include <iostream>
 

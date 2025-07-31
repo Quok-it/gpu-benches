@@ -1,7 +1,7 @@
-#include "../MeasurementSeries.hpp"
-#include "../dtime.hpp"
-#include "../gpu-clock.cuh"
-#include "../gpu-error.h"
+#include "../../MeasurementSeries.hpp"
+#include "../../dtime.hpp"
+#include "../../gpu-clock.cuh"
+#include "../../gpu-error.h"
 // #include <algorithm>
 #include <cuComplex.h>
 #include <cuda_runtime.h>
