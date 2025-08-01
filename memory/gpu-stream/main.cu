@@ -3,11 +3,26 @@
 #include "../../gpu-error.h"
 #include <iomanip>
 #include <iostream>
+#include <vector>
+#include <fstream>
+#include <ctime>
 
 using namespace std;
 
 const int64_t max_buffer_size = 256l * 1024 * 1024 + 2;
 double *dA, *dB, *dC, *dD;
+
+struct BenchmarkResult {
+  int block_size;
+  int threads;
+  double occupancy_percent;
+  double init_gbps;
+  double read_gbps;
+  double scale_gbps;
+  double triad_gbps;
+  double pt3_gbps;
+  double pt5_gbps;
+};
 
 using kernel_ptr_type = void (*)(double *A, const double *__restrict__ B,
                                  const double *__restrict__ C,
@@ -124,8 +139,8 @@ __global__ void stencil1d5pt_kernel(T *A, const T *__restrict__ B,
   if (secretlyFalse)
     A[tidx] = spoiler[tidx];
 }
-void measureFunc(kernel_ptr_type func, int streamCount, int blockSize,
-                 int blocksPerSM) {
+double measureFunc(kernel_ptr_type func, int streamCount, int blockSize,
+                   int blocksPerSM) {
 
 #ifdef __NVCC__
   GPU_ERROR(cudaFuncSetAttribute(
@@ -172,13 +187,14 @@ void measureFunc(kernel_ptr_type func, int streamCount, int blockSize,
     time.add(milliseconds / 1000);
   }
 
-  cout << fixed << setprecision(0) << setw(6) << " " << setw(5)
-       << streamCount * max_buffer_size * sizeof(double) / time.median() * 1e-9;
+  double gbps = streamCount * max_buffer_size * sizeof(double) / time.median() * 1e-9;
+  cout << fixed << setprecision(0) << setw(6) << " " << setw(5) << gbps;
   cout.flush();
+  return gbps;
 }
 
-void measureKernels(vector<pair<kernel_ptr_type, int>> kernels, int blockSize,
-                    int blocksPerSM) {
+BenchmarkResult measureKernels(vector<pair<kernel_ptr_type, int>> kernels, int blockSize,
+                               int blocksPerSM) {
   cudaDeviceProp prop;
   int deviceId;
   GPU_ERROR(cudaGetDevice(&deviceId));
@@ -189,26 +205,36 @@ void measureKernels(vector<pair<kernel_ptr_type, int>> kernels, int blockSize,
     prop.multiProcessorCount *= 2;
   }
 
-  // std::cout << prop.maxThreadsPerMultiProcessor << " "
-  //           << prop.maxThreadsPerBlock << "\n";
-
+  BenchmarkResult result = {};
+  
   if (blockSize * blocksPerSM > prop.maxThreadsPerMultiProcessor ||
       blockSize > prop.maxThreadsPerBlock)
-    return;
+    return result;
 
   int smCount = prop.multiProcessorCount;
+  int totalThreads = smCount * blockSize * blocksPerSM;
+  double occupancy = (float)(blockSize * blocksPerSM) / prop.maxThreadsPerMultiProcessor * 100.0;
+  
+  // store result data
+  result.block_size = blockSize;
+  result.threads = totalThreads;
+  result.occupancy_percent = occupancy;
+  
   cout << setw(4) << blockSize << "   " << setw(7)
-       << smCount * blockSize * blocksPerSM << "  " << setw(5) << setw(6)
+       << totalThreads << "  " << setw(5) << setw(6)
        << blocksPerSM << "  " << setprecision(1) << setw(5)
-       << (float)(blockSize * blocksPerSM) / prop.maxThreadsPerMultiProcessor *
-              100.0
-       << "%     |  GB/s: ";
+       << occupancy << "%     |  GB/s: ";
 
-  for (auto kernel : kernels) {
-    measureFunc(kernel.first, kernel.second, blockSize, blocksPerSM);
-  }
+  // measure each kernel and store results
+  result.init_gbps = measureFunc(kernels[0].first, kernels[0].second, blockSize, blocksPerSM);
+  result.read_gbps = measureFunc(kernels[1].first, kernels[1].second, blockSize, blocksPerSM);
+  result.scale_gbps = measureFunc(kernels[2].first, kernels[2].second, blockSize, blocksPerSM);
+  result.triad_gbps = measureFunc(kernels[3].first, kernels[3].second, blockSize, blocksPerSM);
+  result.pt3_gbps = measureFunc(kernels[4].first, kernels[4].second, blockSize, blocksPerSM);
+  result.pt5_gbps = measureFunc(kernels[5].first, kernels[5].second, blockSize, blocksPerSM);
 
   cout << "\n";
+  return result;
 }
 
 int main(int argc, char **argv) {
@@ -232,29 +258,59 @@ int main(int argc, char **argv) {
       {scale_kernel<double>, 2},        {triad_kernel<double>, 4},
       {stencil1d3pt_kernel<double>, 2}, {stencil1d5pt_kernel<double>, 2}};
 
+  vector<BenchmarkResult> results;
+
   cout << "block smBlocks   threads    occ%   |                init"
        << "       read       scale     triad       3pt        5pt\n";
 
-  // for (int blockSize = 32; blockSize <= 1024; blockSize += 32) {
-  //   measureKernels(kernels, blockSize, 1);
-  // }
-
-  measureKernels(kernels, 16, 1);
-  measureKernels(kernels, 32, 1);
-  measureKernels(kernels, 48, 1);
-  measureKernels(kernels, 64, 1);
-  measureKernels(kernels, 80, 1);
-  measureKernels(kernels, 96, 1);
-  measureKernels(kernels, 112, 1);
+  // Collect all results
+  results.push_back(measureKernels(kernels, 16, 1));
+  results.push_back(measureKernels(kernels, 32, 1));
+  results.push_back(measureKernels(kernels, 48, 1));
+  results.push_back(measureKernels(kernels, 64, 1));
+  results.push_back(measureKernels(kernels, 80, 1));
+  results.push_back(measureKernels(kernels, 96, 1));
+  results.push_back(measureKernels(kernels, 112, 1));
 
   for (int warpCount = 4; warpCount <= 80; warpCount++) {
-
     int threadCount = warpCount * 32;
-    if (threadCount / 32 % 2 == 0)
+    if (threadCount / 32 % 2 == 0) {
       // and (warpCount < 16 || warpCount % 8 == 0))
-      measureKernels(kernels, threadCount / 2, 2);
-    else if (warpCount < 6)
-      measureKernels(kernels, threadCount, 1);
+      auto result = measureKernels(kernels, threadCount / 2, 2);
+      if (result.block_size > 0) results.push_back(result);
+    } else if (warpCount < 6) {
+      auto result = measureKernels(kernels, threadCount, 1);
+      if (result.block_size > 0) results.push_back(result);
+    }
+  }
+
+  // output SQL INSERT statements
+  cout << "\n--- SQL INSERT Statements ---\n";
+  cout << "-- GPU Stream Benchmark Results\n";
+  cout << "-- Generated at: " << time(nullptr) << "\n\n";
+  
+  for (const auto& result : results) {
+    if (result.block_size > 0) {  // only output valid results
+      cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
+      cout << "  1, -- execution_id (update this)\n";
+      cout << "  'UPDATE_GPU_UUID', -- gpu_uuid (update this)\n";
+      cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'gpu_stream'),\n";
+      cout << "  NOW(),\n";
+      cout << "  'memory',\n";
+      cout << "  'gpu_stream_bandwidth',\n";
+      cout << "  '{\n";
+      cout << "    \"block_size\": " << result.block_size << ",\n";
+      cout << "    \"threads\": " << result.threads << ",\n";
+      cout << "    \"occupancy_percent\": " << fixed << setprecision(1) << result.occupancy_percent << ",\n";
+      cout << "    \"init_gbps\": " << fixed << setprecision(0) << result.init_gbps << ",\n";
+      cout << "    \"read_gbps\": " << result.read_gbps << ",\n";
+      cout << "    \"scale_gbps\": " << result.scale_gbps << ",\n";
+      cout << "    \"triad_gbps\": " << result.triad_gbps << ",\n";
+      cout << "    \"3pt_gbps\": " << result.pt3_gbps << ",\n";
+      cout << "    \"5pt_gbps\": " << result.pt5_gbps << "\n";
+      cout << "  }'::jsonb\n";
+      cout << ");\n\n";
+    }
   }
 
   GPU_ERROR(cudaFree(dA));
