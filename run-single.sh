@@ -63,9 +63,16 @@ echo "=== GPU Cache Microbenchmark ==="
 cd memory/gpu-cache
 make clean && make
 if sudo -n true 2>/dev/null; then
-    sudo ./cuda-cache > "$RESULTS_DIR/gpu-benches/gpu-cache-results.txt"
+    sudo ./cuda-cache "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-cache-results.sql"
+    
+    # insert into database
+    echo "Inserting GPU Cache results into database..."
+    PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-cache-results.sql"
+    
+    echo "GPU Cache microbenchmark completed and added to database!"
+else
+    echo "GPU Cache microbenchmark skipped (requires sudo)"
 fi
-echo "GPU Cache microbenchmark completed"
 cd ../..
 
 # gpu-l2-cache benchmark (needs sudo)
