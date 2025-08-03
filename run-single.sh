@@ -1,6 +1,20 @@
 #!/bin/bash
 set -e
 
+# load env variables from .env file
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+fi
+
+# get GPU UUID
+GPU_UUID=$(nvidia-smi -q | grep -i "GPU UUID" | awk '{print $NF}')
+if [ -z "$GPU_UUID" ]; then
+    echo "Error: Could not get GPU UUID"
+    exit 1
+fi
+
+echo "Using GPU UUID: $GPU_UUID"
+
 # set default directories if not provided
 BENCHMARK_DIR=${BENCHMARK_DIR:-$(pwd)}
 RESULTS_DIR=${RESULTS_DIR:-$(pwd)/results}
@@ -10,17 +24,37 @@ cd "$BENCHMARK_DIR"
 # create results directory
 mkdir -p "$RESULTS_DIR/gpu-benches"
 
-# TODO: convert this to prometheus exporter rather than txt file
+# gpu-stream now uses SQL export, other benchmarks still use txt
 echo "Starting GPU benchmarks collection..."
 echo "Results will be saved to: $RESULTS_DIR/gpu-benches"
+
+# create new execution entry and get execution_id
+echo "Creating new benchmark execution entry..."
+EXECUTION_ID=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "
+INSERT INTO benchmark_executions (execution_name, scale_type, benchmark_suite, provider, gpu_type_filter, status, started_at, total_gpus) 
+VALUES ('gpu_stream_auto_run', 'gpu', 'memory_microbenchmarks', 'unknown_provider', 'unknown', 'running', NOW(), 1) 
+RETURNING execution_id;" | xargs)
+
+echo "Created execution with ID: $EXECUTION_ID"
 
 # gpu-stream benchmark
 echo ""
 echo "=== GPU Stream Microbenchmark ==="
 cd memory/gpu-stream
 make clean && make
-./cuda-stream > "$RESULTS_DIR/gpu-benches/gpu-stream-results.txt"
-echo "GPU Stream microbenchmark completed"
+./cuda-stream "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-stream-results.sql"
+
+# insert into database
+echo "Inserting GPU Stream results into database..."
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-stream-results.sql"
+
+# mark execution as completed
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+UPDATE benchmark_executions 
+SET status = 'completed', completed_at = NOW() 
+WHERE execution_id = $EXECUTION_ID;"
+
+echo "GPU Stream microbenchmark completed and added to database!"
 cd ../..
 
 # gpu-cache benchmark (needs sudo)

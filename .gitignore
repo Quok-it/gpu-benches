@@ -1,0 +1,20 @@
+# Environment variables
+.env
+
+# Build artifacts
+*.o
+*.exe
+*.out
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# IDE files
+.vscode/
+.idea/
+
+# Results files
+results/
+*.sql
