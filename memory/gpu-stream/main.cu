@@ -141,7 +141,7 @@ __global__ void stencil1d5pt_kernel(T *A, const T *__restrict__ B,
     A[tidx] = spoiler[tidx];
 }
 double measureFunc(kernel_ptr_type func, int streamCount, int blockSize,
-                   int blocksPerSM) {
+                   int blocksPerSM, bool sql_mode = false) {
 
 #ifdef __NVCC__
   GPU_ERROR(cudaFuncSetAttribute(
@@ -189,13 +189,15 @@ double measureFunc(kernel_ptr_type func, int streamCount, int blockSize,
   }
 
   double gbps = streamCount * max_buffer_size * sizeof(double) / time.median() * 1e-9;
-  cout << fixed << setprecision(0) << setw(6) << " " << setw(5) << gbps;
-  cout.flush();
+  if (!sql_mode) {
+    cout << fixed << setprecision(0) << setw(6) << " " << setw(5) << gbps;
+    cout.flush();
+  }
   return gbps;
 }
 
 BenchmarkResult measureKernels(vector<pair<kernel_ptr_type, int>> kernels, int blockSize,
-                               int blocksPerSM) {
+                               int blocksPerSM, bool sql_mode = false) {
   cudaDeviceProp prop;
   int deviceId;
   GPU_ERROR(cudaGetDevice(&deviceId));
@@ -221,26 +223,31 @@ BenchmarkResult measureKernels(vector<pair<kernel_ptr_type, int>> kernels, int b
   result.threads = totalThreads;
   result.occupancy_percent = occupancy;
   
-  cout << setw(4) << blockSize << "   " << setw(7)
-       << totalThreads << "  " << setw(5) << setw(6)
-       << blocksPerSM << "  " << setprecision(1) << setw(5)
-       << occupancy << "%     |  GB/s: ";
+  if (!sql_mode) {
+    cout << setw(4) << blockSize << "   " << setw(7)
+         << totalThreads << "  " << setw(5) << setw(6)
+         << blocksPerSM << "  " << setprecision(1) << setw(5)
+         << occupancy << "%     |  GB/s: ";
+  }
 
   // measure each kernel and store results
-  result.init_gbps = measureFunc(kernels[0].first, kernels[0].second, blockSize, blocksPerSM);
-  result.read_gbps = measureFunc(kernels[1].first, kernels[1].second, blockSize, blocksPerSM);
-  result.scale_gbps = measureFunc(kernels[2].first, kernels[2].second, blockSize, blocksPerSM);
-  result.triad_gbps = measureFunc(kernels[3].first, kernels[3].second, blockSize, blocksPerSM);
-  result.pt3_gbps = measureFunc(kernels[4].first, kernels[4].second, blockSize, blocksPerSM);
-  result.pt5_gbps = measureFunc(kernels[5].first, kernels[5].second, blockSize, blocksPerSM);
+  result.init_gbps = measureFunc(kernels[0].first, kernels[0].second, blockSize, blocksPerSM, sql_mode);
+  result.read_gbps = measureFunc(kernels[1].first, kernels[1].second, blockSize, blocksPerSM, sql_mode);
+  result.scale_gbps = measureFunc(kernels[2].first, kernels[2].second, blockSize, blocksPerSM, sql_mode);
+  result.triad_gbps = measureFunc(kernels[3].first, kernels[3].second, blockSize, blocksPerSM, sql_mode);
+  result.pt3_gbps = measureFunc(kernels[4].first, kernels[4].second, blockSize, blocksPerSM, sql_mode);
+  result.pt5_gbps = measureFunc(kernels[5].first, kernels[5].second, blockSize, blocksPerSM, sql_mode);
 
-  cout << "\n";
+  if (!sql_mode) {
+    cout << "\n";
+  }
   return result;
 }
 
 int main(int argc, char **argv) {
   int execution_id = 1; // default fallback
   string gpu_uuid = "unknown_gpu"; // default fallback
+  bool sql_output_mode = false; // flag to control output format
   
   // parse execution_id from command line
   if (argc > 1) {
@@ -249,6 +256,7 @@ int main(int argc, char **argv) {
       cerr << "Error: Invalid execution_id provided: " << argv[1] << endl;
       return 1;
     }
+    sql_output_mode = true; // if execution_id provided, assume SQL mode
   }
   
   // parse gpu_uuid from command line
@@ -282,95 +290,98 @@ int main(int argc, char **argv) {
 
   vector<BenchmarkResult> results;
 
-  cout << "block smBlocks   threads    occ%   |                init"
-       << "       read       scale     triad       3pt        5pt\n";
+  if (!sql_output_mode) {
+    cout << "block smBlocks   threads    occ%   |                init"
+         << "       read       scale     triad       3pt        5pt\n";
+  }
 
   // Collect all results
-  results.push_back(measureKernels(kernels, 16, 1));
-  results.push_back(measureKernels(kernels, 32, 1));
-  results.push_back(measureKernels(kernels, 48, 1));
-  results.push_back(measureKernels(kernels, 64, 1));
-  results.push_back(measureKernels(kernels, 80, 1));
-  results.push_back(measureKernels(kernels, 96, 1));
-  results.push_back(measureKernels(kernels, 112, 1));
+  results.push_back(measureKernels(kernels, 16, 1, sql_output_mode));
+  results.push_back(measureKernels(kernels, 32, 1, sql_output_mode));
+  results.push_back(measureKernels(kernels, 48, 1, sql_output_mode));
+  results.push_back(measureKernels(kernels, 64, 1, sql_output_mode));
+  results.push_back(measureKernels(kernels, 80, 1, sql_output_mode));
+  results.push_back(measureKernels(kernels, 96, 1, sql_output_mode));
+  results.push_back(measureKernels(kernels, 112, 1, sql_output_mode));
 
   for (int warpCount = 4; warpCount <= 80; warpCount++) {
     int threadCount = warpCount * 32;
     if (threadCount / 32 % 2 == 0) {
       // and (warpCount < 16 || warpCount % 8 == 0))
-      auto result = measureKernels(kernels, threadCount / 2, 2);
+      auto result = measureKernels(kernels, threadCount / 2, 2, sql_output_mode);
       if (result.block_size > 0) results.push_back(result);
     } else if (warpCount < 6) {
-      auto result = measureKernels(kernels, threadCount, 1);
+      auto result = measureKernels(kernels, threadCount, 1, sql_output_mode);
       if (result.block_size > 0) results.push_back(result);
     }
   }
 
-  // output single SQL INSERT statement with all results
-  cout << "\n--- SQL INSERT Statement ---\n";
-  cout << "-- GPU Stream Benchmark Results (All Configs)\n";
-  cout << "-- Generated at: " << time(nullptr) << "\n\n";
-  
-  // filter valid results
-  vector<BenchmarkResult> validResults;
-  for (const auto& result : results) {
-    if (result.block_size > 0) {
-      validResults.push_back(result);
-    }
-  }
-  
-  if (!validResults.empty()) {
-    cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
-    cout << "  " << execution_id << ", -- execution_id\n";
-    cout << "  '" << gpu_uuid << "', -- gpu_uuid\n";
-    cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'gpu_stream'),\n";
-    cout << "  NOW(),\n";
-    cout << "  'memory',\n";
-    cout << "  'gpu_stream_bandwidth',\n";
-    cout << "  '{\n";
-    cout << "    \"configurations\": [\n";
+  if (sql_output_mode) {
+    // output single SQL INSERT statement with all results
+    cout << "-- GPU Stream Benchmark Results (All Configs)\n";
+    cout << "-- Generated at: " << time(nullptr) << "\n\n";
     
-    for (size_t i = 0; i < validResults.size(); ++i) {
-      const auto& result = validResults[i];
-      cout << "      {\n";
-      cout << "        \"block_size\": " << result.block_size << ",\n";
-      cout << "        \"threads\": " << result.threads << ",\n";
-      cout << "        \"occupancy_percent\": " << fixed << setprecision(1) << result.occupancy_percent << ",\n";
-      cout << "        \"init_gbps\": " << fixed << setprecision(0) << result.init_gbps << ",\n";
-      cout << "        \"read_gbps\": " << result.read_gbps << ",\n";
-      cout << "        \"scale_gbps\": " << result.scale_gbps << ",\n";
-      cout << "        \"triad_gbps\": " << result.triad_gbps << ",\n";
-      cout << "        \"3pt_gbps\": " << result.pt3_gbps << ",\n";
-      cout << "        \"5pt_gbps\": " << result.pt5_gbps << "\n";
-      cout << "      }";
-      if (i < validResults.size() - 1) cout << ",";
-      cout << "\n";
+    // filter valid results
+    vector<BenchmarkResult> validResults;
+    for (const auto& result : results) {
+      if (result.block_size > 0) {
+        validResults.push_back(result);
+      }
     }
     
-    cout << "    ],\n";
-    cout << "    \"total_configurations\": " << validResults.size() << ",\n";
-    cout << "    \"max_bandwidth\": {\n";
-    
-    // Find maximum values across all configurations
-    double max_init = 0, max_read = 0, max_scale = 0, max_triad = 0, max_3pt = 0, max_5pt = 0;
-    for (const auto& result : validResults) {
-      max_init = max(max_init, result.init_gbps);
-      max_read = max(max_read, result.read_gbps);
-      max_scale = max(max_scale, result.scale_gbps);
-      max_triad = max(max_triad, result.triad_gbps);
-      max_3pt = max(max_3pt, result.pt3_gbps);
-      max_5pt = max(max_5pt, result.pt5_gbps);
+    if (!validResults.empty()) {
+      cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
+      cout << "  " << execution_id << ", -- execution_id\n";
+      cout << "  '" << gpu_uuid << "', -- gpu_uuid\n";
+      cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'gpu_stream'),\n";
+      cout << "  NOW(),\n";
+      cout << "  'memory',\n";
+      cout << "  'gpu_stream_bandwidth',\n";
+      cout << "  '{\n";
+      cout << "    \"configurations\": [\n";
+      
+      for (size_t i = 0; i < validResults.size(); ++i) {
+        const auto& result = validResults[i];
+        cout << "      {\n";
+        cout << "        \"block_size\": " << result.block_size << ",\n";
+        cout << "        \"threads\": " << result.threads << ",\n";
+        cout << "        \"occupancy_percent\": " << fixed << setprecision(1) << result.occupancy_percent << ",\n";
+        cout << "        \"init_gbps\": " << fixed << setprecision(0) << result.init_gbps << ",\n";
+        cout << "        \"read_gbps\": " << result.read_gbps << ",\n";
+        cout << "        \"scale_gbps\": " << result.scale_gbps << ",\n";
+        cout << "        \"triad_gbps\": " << result.triad_gbps << ",\n";
+        cout << "        \"3pt_gbps\": " << result.pt3_gbps << ",\n";
+        cout << "        \"5pt_gbps\": " << result.pt5_gbps << "\n";
+        cout << "      }";
+        if (i < validResults.size() - 1) cout << ",";
+        cout << "\n";
+      }
+      
+      cout << "    ],\n";
+      cout << "    \"total_configurations\": " << validResults.size() << ",\n";
+      cout << "    \"max_bandwidth\": {\n";
+      
+      // Find maximum values across all configurations
+      double max_init = 0, max_read = 0, max_scale = 0, max_triad = 0, max_3pt = 0, max_5pt = 0;
+      for (const auto& result : validResults) {
+        max_init = max(max_init, result.init_gbps);
+        max_read = max(max_read, result.read_gbps);
+        max_scale = max(max_scale, result.scale_gbps);
+        max_triad = max(max_triad, result.triad_gbps);
+        max_3pt = max(max_3pt, result.pt3_gbps);
+        max_5pt = max(max_5pt, result.pt5_gbps);
+      }
+      
+      cout << "      \"init_gbps\": " << fixed << setprecision(0) << max_init << ",\n";
+      cout << "      \"read_gbps\": " << max_read << ",\n";
+      cout << "      \"scale_gbps\": " << max_scale << ",\n";
+      cout << "      \"triad_gbps\": " << max_triad << ",\n";
+      cout << "      \"3pt_gbps\": " << max_3pt << ",\n";
+      cout << "      \"5pt_gbps\": " << max_5pt << "\n";
+      cout << "    }\n";
+      cout << "  }'::jsonb\n";
+      cout << ");\n\n";
     }
-    
-    cout << "      \"init_gbps\": " << fixed << setprecision(0) << max_init << ",\n";
-    cout << "      \"read_gbps\": " << max_read << ",\n";
-    cout << "      \"scale_gbps\": " << max_scale << ",\n";
-    cout << "      \"triad_gbps\": " << max_triad << ",\n";
-    cout << "      \"3pt_gbps\": " << max_3pt << ",\n";
-    cout << "      \"5pt_gbps\": " << max_5pt << "\n";
-    cout << "    }\n";
-    cout << "  }'::jsonb\n";
-    cout << ");\n\n";
   }
 
   GPU_ERROR(cudaFree(dA));
