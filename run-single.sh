@@ -75,16 +75,23 @@ echo "Created execution with ID: $EXECUTION_ID"
 # fi
 # cd ../..
 
-# # gpu-l2-cache benchmark (needs sudo)
-# echo ""
-# echo "=== GPU L2 Cache Microbenchmark ==="
-# cd memory/gpu-l2-cache
-# make clean && make
-# if sudo -n true 2>/dev/null; then
-#     sudo ./cuda-l2-cache > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.txt"
-# fi
-# echo "GPU L2 Cache microbenchmark completed"
-# cd ../..
+# gpu-l2-cache benchmark (needs sudo)
+echo ""
+echo "=== GPU L2 Cache Microbenchmark ==="
+cd memory/gpu-l2-cache
+make clean && make
+if sudo -n true 2>/dev/null; then
+    sudo ./cuda-l2-cache "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.sql"
+    
+    # insert into database
+    echo "Inserting GPU L2 Cache results into database..."
+    PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.sql"
+    
+    echo "GPU L2 Cache microbenchmark completed and added to database!"
+else
+    echo "GPU L2 Cache microbenchmark skipped (requires sudo)"
+fi
+cd ../..
 
 # cuda-memcpy benchmark
 echo ""
@@ -99,6 +106,12 @@ PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB
 
 echo "CUDA Memory Copy microbenchmark completed and added to database!"
 cd ../..
+
+# mark execution as completed
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+UPDATE benchmark_executions 
+SET status = 'completed', completed_at = NOW() 
+WHERE execution_id = $EXECUTION_ID;"
 
 # Copy README files for reference
 echo ""
