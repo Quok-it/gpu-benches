@@ -706,10 +706,10 @@ int main(int argc, char **argv) {
         cout << "CUDA Matrix Multiply Benchmark" << endl;
         cout << "Testing various precisions and tensor core usage" << endl;
         cout << "GPU Clock: ";
+        
+        // init GPU clock measurement (only in interactive mode)
+        gpu_clock = getGPUClock();
     }
-    
-    // init GPU clock measurement
-    gpu_clock = getGPUClock();
     
     // init cuBLAS
     cublasCreate(&cublas_handle);
