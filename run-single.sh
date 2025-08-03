@@ -75,36 +75,50 @@ echo "Created execution with ID: $EXECUTION_ID"
 # fi
 # cd ../..
 
-# gpu-l2-cache benchmark (needs sudo)
-echo ""
-echo "=== GPU L2 Cache Microbenchmark ==="
-cd memory/gpu-l2-cache
-make clean && make
-if sudo -n true 2>/dev/null; then
-    sudo ./cuda-l2-cache "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.sql"
+# # gpu-l2-cache benchmark (needs sudo)
+# echo ""
+# echo "=== GPU L2 Cache Microbenchmark ==="
+# cd memory/gpu-l2-cache
+# make clean && make
+# if sudo -n true 2>/dev/null; then
+#     sudo ./cuda-l2-cache "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.sql"
     
-    # insert into database
-    echo "Inserting GPU L2 Cache results into database..."
-    PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.sql"
+#     # insert into database
+#     echo "Inserting GPU L2 Cache results into database..."
+#     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.sql"
     
-    echo "GPU L2 Cache microbenchmark completed and added to database!"
-else
-    echo "GPU L2 Cache microbenchmark skipped (requires sudo)"
-fi
-cd ../..
+#     echo "GPU L2 Cache microbenchmark completed and added to database!"
+# else
+#     echo "GPU L2 Cache microbenchmark skipped (requires sudo)"
+# fi
+# cd ../..
 
-# cuda-memcpy benchmark
+# # cuda-memcpy benchmark
+# echo ""
+# echo "=== CUDA Memory Copy Microbenchmark ==="
+# cd memory/cuda-memcpy
+# make clean && make
+# ./cuda-memcpy "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-memcpy-results.sql"
+
+# # insert into database
+# echo "Inserting CUDA Memory Copy results into database..."
+# PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-memcpy-results.sql"
+
+# echo "CUDA Memory Copy microbenchmark completed and added to database!"
+# cd ../..
+
+# cuda-matmul benchmark
 echo ""
-echo "=== CUDA Memory Copy Microbenchmark ==="
-cd memory/cuda-memcpy
+echo "=== CUDA Matrix Multiplication Microbenchmark ==="
+cd compute/cuda-matmul
 make clean && make
-./cuda-memcpy "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-memcpy-results.sql"
+./cuda-matmul "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-matmul-results.sql"
 
 # insert into database
-echo "Inserting CUDA Memory Copy results into database..."
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-memcpy-results.sql"
+echo "Inserting CUDA Matrix Multiplication results into database..."
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-matmul-results.sql"
 
-echo "CUDA Memory Copy microbenchmark completed and added to database!"
+echo "CUDA Matrix Multiplication microbenchmark completed and added to database!"
 cd ../..
 
 # mark execution as completed

@@ -14,6 +14,7 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <ctime>
 
 using namespace std;
 
@@ -21,6 +22,11 @@ using namespace std;
 cublasHandle_t cublas_handle;
 cublasLtHandle_t cublaslt_handle;
 unsigned int gpu_clock = 0;
+
+// SQL mode globals
+int execution_id = 1;
+string gpu_uuid = "unknown_gpu";
+bool sql_output_mode = false;
 
 // matrix dimensions to test
 vector<int> matrix_sizes = {256, 512, 1024, 2048, 4096, 8192};
@@ -486,10 +492,12 @@ double benchmark_fp16_tensor(int M, int N, int K, int num_iterations = 100) {
 void run_all_benchmarks() {
     vector<BenchmarkResult> results;
     
-    cout << "Starting Matrix Multiply Benchmarks..." << endl;
-    cout << "Matrix Sizes: ";
-    for(int size : matrix_sizes) cout << size << " ";
-    cout << endl << endl;
+    if (!sql_output_mode) {
+        cout << "Starting Matrix Multiply Benchmarks..." << endl;
+        cout << "Matrix Sizes: ";
+        for(int size : matrix_sizes) cout << size << " ";
+        cout << endl << endl;
+    }
     
     // define benchmark configs
     struct BenchConfig {
@@ -510,7 +518,9 @@ void run_all_benchmarks() {
     };
     
     for(const auto& bench : benchmarks) {
-        cout << "Running " << bench.name << " benchmarks..." << endl;
+        if (!sql_output_mode) {
+            cout << "Running " << bench.name << " benchmarks..." << endl;
+        }
         
         for(int size : matrix_sizes) {
             try {
@@ -528,59 +538,175 @@ void run_all_benchmarks() {
                 
                 results.push_back(result);
                 
-                cout << "  " << size << "x" << size << ": " 
-                     << fixed << setprecision(2) << tflops << " TFLOPS" << endl;
+                if (!sql_output_mode) {
+                    cout << "  " << size << "x" << size << ": " 
+                         << fixed << setprecision(2) << tflops << " TFLOPS" << endl;
+                }
             } catch(...) {
-                cout << "  " << size << "x" << size << ": FAILED" << endl;
-            }
-        }
-        cout << endl;
-    }
-    
-    // print results table
-    cout << "\n=== BENCHMARK RESULTS ===" << endl;
-    cout << setw(12) << "Precision" << setw(8) << "TC" << setw(8) << "Size";
-    cout << setw(12) << "TFLOPS" << setw(12) << "Time(ms)" << endl;
-    cout << string(52, '-') << endl;
-    
-    for(const auto& result : results) {
-        cout << setw(12) << result.precision_name 
-             << setw(8) << (result.tensor_cores ? "Yes" : "No")
-             << setw(8) << result.matrix_size
-             << setw(12) << fixed << setprecision(2) << result.tflops
-             << setw(12) << fixed << setprecision(3) << result.time_ms << endl;
-    }
-    
-    // print summary table by precision
-    cout << "\n=== TFLOPS SUMMARY BY MATRIX SIZE ===" << endl;
-    cout << setw(12) << "Precision";
-    for(int size : matrix_sizes) {
-        cout << setw(8) << size;
-    }
-    cout << endl;
-    cout << string(12 + 8 * matrix_sizes.size(), '-') << endl;
-    
-    for(const auto& bench : benchmarks) {
-        cout << setw(12) << bench.name;
-        for(int size : matrix_sizes) {
-            bool found = false;
-            for(const auto& result : results) {
-                if(result.precision_name == bench.name && result.matrix_size == size) {
-                    cout << setw(8) << fixed << setprecision(1) << result.tflops;
-                    found = true;
-                    break;
+                if (!sql_output_mode) {
+                    cout << "  " << size << "x" << size << ": FAILED" << endl;
                 }
             }
-            if(!found) cout << setw(8) << "N/A";
+        }
+        if (!sql_output_mode) {
+            cout << endl;
+        }
+    }
+    
+    if (sql_output_mode) {
+        // generate SQL output
+        cout << "-- CUDA Matrix Multiplication Benchmark Results\n";
+        cout << "-- Generated at: " << time(nullptr) << "\n\n";
+        
+        if (!results.empty()) {
+            cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
+            cout << "  " << execution_id << ", -- execution_id\n";
+            cout << "  '" << gpu_uuid << "', -- gpu_uuid\n";
+            cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'cuda_matmul'),\n";
+            cout << "  NOW(),\n";
+            cout << "  'compute',\n";
+            cout << "  'matrix_multiplication_tflops',\n";
+            cout << "  '{\n";
+            cout << "    \"configurations\": [\n";
+            
+            for (size_t i = 0; i < results.size(); ++i) {
+                const auto& result = results[i];
+                cout << "      {\n";
+                cout << "        \"precision_type\": \"" << result.precision_name << "\",\n";
+                cout << "        \"matrix_size\": " << result.matrix_size << ",\n";
+                cout << "        \"tensor_cores\": " << (result.tensor_cores ? "true" : "false") << ",\n";
+                cout << "        \"tflops\": " << fixed << setprecision(2) << result.tflops << ",\n";
+                cout << "        \"time_ms\": " << setprecision(3) << result.time_ms << ",\n";
+                cout << "        \"flops\": " << scientific << setprecision(2) << get_flops(result.matrix_size, result.matrix_size, result.matrix_size) << "\n";
+                cout << "      }";
+                if (i < results.size() - 1) cout << ",";
+                cout << "\n";
+            }
+            
+            cout << "    ],\n";
+            cout << "    \"total_configurations\": " << results.size() << ",\n";
+            cout << "    \"peak_performance\": {\n";
+            
+            // find peak performance metrics
+            double max_tflops = 0, tensor_peak = 0, traditional_peak = 0;
+            string best_precision;
+            int best_size = 0;
+            for (const auto& result : results) {
+                if (result.tflops > max_tflops) {
+                    max_tflops = result.tflops;
+                    best_precision = result.precision_name;
+                    best_size = result.matrix_size;
+                }
+                if (result.tensor_cores) {
+                    tensor_peak = max(tensor_peak, result.tflops);
+                } else {
+                    traditional_peak = max(traditional_peak, result.tflops);
+                }
+            }
+            
+            cout << "      \"max_tflops\": " << fixed << setprecision(2) << max_tflops << ",\n";
+            cout << "      \"best_precision\": \"" << best_precision << "\",\n";
+            cout << "      \"best_matrix_size\": " << best_size << ",\n";
+            cout << "      \"tensor_core_peak\": " << setprecision(2) << tensor_peak << ",\n";
+            cout << "      \"traditional_peak\": " << setprecision(2) << traditional_peak << "\n";
+            cout << "    },\n";
+            cout << "    \"precision_summary\": {\n";
+            
+            // create precision summary
+            bool first_precision = true;
+            for (const auto& bench : benchmarks) {
+                if (!first_precision) cout << ",\n";
+                cout << "      \"" << bench.name << "\": {\n";
+                cout << "        \"tensor_cores\": " << (bench.tensor_cores ? "true" : "false") << ",\n";
+                cout << "        \"results_by_size\": {\n";
+                
+                bool first_size = true;
+                for (int size : matrix_sizes) {
+                    for (const auto& result : results) {
+                        if (result.precision_name == bench.name && result.matrix_size == size) {
+                            if (!first_size) cout << ",\n";
+                            cout << "          \"" << size << "\": " << fixed << setprecision(1) << result.tflops;
+                            first_size = false;
+                            break;
+                        }
+                    }
+                }
+                cout << "\n        }\n";
+                cout << "      }";
+                first_precision = false;
+            }
+            
+            cout << "\n    }\n";
+            cout << "  }'::jsonb\n";
+            cout << ");\n\n";
+        }
+    } else {
+        // print results table
+        cout << "\n=== BENCHMARK RESULTS ===" << endl;
+        cout << setw(12) << "Precision" << setw(8) << "TC" << setw(8) << "Size";
+        cout << setw(12) << "TFLOPS" << setw(12) << "Time(ms)" << endl;
+        cout << string(52, '-') << endl;
+        
+        for(const auto& result : results) {
+            cout << setw(12) << result.precision_name 
+                 << setw(8) << (result.tensor_cores ? "Yes" : "No")
+                 << setw(8) << result.matrix_size
+                 << setw(12) << fixed << setprecision(2) << result.tflops
+                 << setw(12) << fixed << setprecision(3) << result.time_ms << endl;
+        }
+        
+        // print summary table by precision
+        cout << "\n=== TFLOPS SUMMARY BY MATRIX SIZE ===" << endl;
+        cout << setw(12) << "Precision";
+        for(int size : matrix_sizes) {
+            cout << setw(8) << size;
         }
         cout << endl;
+        cout << string(12 + 8 * matrix_sizes.size(), '-') << endl;
+        
+        for(const auto& bench : benchmarks) {
+            cout << setw(12) << bench.name;
+            for(int size : matrix_sizes) {
+                bool found = false;
+                for(const auto& result : results) {
+                    if(result.precision_name == bench.name && result.matrix_size == size) {
+                        cout << setw(8) << fixed << setprecision(1) << result.tflops;
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found) cout << setw(8) << "N/A";
+            }
+            cout << endl;
+        }
     }
 }
 
 int main(int argc, char **argv) {
-    cout << "CUDA Matrix Multiply Benchmark" << endl;
-    cout << "Testing various precisions and tensor core usage" << endl;
-    cout << "GPU Clock: ";
+    // parse execution_id from command line
+    if (argc > 1) {
+        execution_id = atoi(argv[1]);
+        if (execution_id <= 0) {
+            cerr << "Error: Invalid execution_id provided: " << argv[1] << endl;
+            return 1;
+        }
+        sql_output_mode = true; // if args provided --> should be sql
+    }
+
+    // parse gpu_uuid from command line
+    if (argc > 2) {
+        gpu_uuid = string(argv[2]);
+        if (gpu_uuid.empty()) {
+            cerr << "Error: Empty gpu_uuid provided" << endl;
+            return 1;
+        }
+    }
+
+    if (!sql_output_mode) {
+        cout << "CUDA Matrix Multiply Benchmark" << endl;
+        cout << "Testing various precisions and tensor core usage" << endl;
+        cout << "GPU Clock: ";
+    }
     
     // init GPU clock measurement
     gpu_clock = getGPUClock();
@@ -592,17 +718,20 @@ int main(int argc, char **argv) {
     // get device properties
     cudaDeviceProp prop;
     cudaGetDeviceProperties(&prop, 0);
-    cout << "Device: " << prop.name << endl;
-    cout << "Compute Capability: " << prop.major << "." << prop.minor << endl;
-    cout << "Memory: " << prop.totalGlobalMem / (1024*1024*1024) << " GB" << endl;
     
-    // check for tensor core support
-    bool has_tensor_cores = (prop.major >= 7); // Volta and newer
-    cout << "Tensor Cores: " << (has_tensor_cores ? "Supported" : "Not Supported") << endl;
-    cout << endl;
-    
-    if(!has_tensor_cores) {
-        cout << "Warning: Tensor Core benchmarks may not run optimally on this device." << endl;
+    if (!sql_output_mode) {
+        cout << "Device: " << prop.name << endl;
+        cout << "Compute Capability: " << prop.major << "." << prop.minor << endl;
+        cout << "Memory: " << prop.totalGlobalMem / (1024*1024*1024) << " GB" << endl;
+        
+        // check for tensor core support
+        bool has_tensor_cores = (prop.major >= 7); // Volta and newer
+        cout << "Tensor Cores: " << (has_tensor_cores ? "Supported" : "Not Supported") << endl;
+        cout << endl;
+        
+        if(!has_tensor_cores) {
+            cout << "Warning: Tensor Core benchmarks may not run optimally on this device." << endl;
+        }
     }
     
     // run benchmarks
