@@ -32,10 +32,14 @@ echo "Results will be saved to: $RESULTS_DIR/gpu-benches"
 echo "Creating new benchmark execution entry..."
 EXECUTION_ID=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -q -c "
 INSERT INTO benchmark_executions (execution_name, scale_type, benchmark_suite, provider, gpu_type_filter, status, started_at, total_gpus) 
-VALUES ('gpu_stream_auto_run', 'gpu', 'memory_microbenchmarks', 'unknown_provider', 'unknown', 'running', NOW(), 1) 
+VALUES ('7 microbenchmarks', 'gpu', 'microbenchmarks', 'unknown_provider', 'unknown', 'running', NOW(), 1) 
 RETURNING execution_id;" | xargs)
 
 echo "Created execution with ID: $EXECUTION_ID"
+
+echo "================================================"
+echo "======== Memory Microbenchmarks ================"
+echo "================================================"
 
 # # gpu-stream benchmark
 # echo ""
@@ -107,6 +111,10 @@ echo "Created execution with ID: $EXECUTION_ID"
 # echo "CUDA Memory Copy microbenchmark completed and added to database!"
 # cd ../..
 
+echo "================================================"
+echo "======== Compute Microbenchmarks ==============="
+echo "================================================"
+
 # # cuda-matmul benchmark
 # echo ""
 # echo "=== CUDA Matrix Multiplication Microbenchmark ==="
@@ -121,18 +129,36 @@ echo "Created execution with ID: $EXECUTION_ID"
 # echo "CUDA Matrix Multiplication microbenchmark completed and added to database!"
 # cd ../..
 
-# cuda-incore benchmark
+# # cuda-incore benchmark
+# echo ""
+# echo "=== CUDA In-Core Compute Microbenchmark ==="
+# cd compute/cuda-incore
+# make clean && make
+# ./cuda-incore "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-incore-results.sql"
+
+# # insert into database
+# echo "Inserting CUDA In-Core results into database..."
+# PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-incore-results.sql"
+
+# echo "CUDA In-Core microbenchmark completed and added to database!"
+# cd ../..
+
+echo "================================================"
+echo "======== System Microbenchmarks ================"
+echo "================================================"
+
+# gpu-small-kernels benchmark
 echo ""
-echo "=== CUDA In-Core Compute Microbenchmark ==="
-cd compute/cuda-incore
+echo "=== GPU Small Kernels System Microbenchmark ==="
+cd system/gpu-small-kernels
 make clean && make
-./cuda-incore "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-incore-results.sql"
+./cuda-small-kernels "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-small-kernels-results.sql"
 
 # insert into database
-echo "Inserting CUDA In-Core results into database..."
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-incore-results.sql"
+echo "Inserting GPU Small Kernels results into database..."
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-small-kernels-results.sql"
 
-echo "CUDA In-Core microbenchmark completed and added to database!"
+echo "GPU Small Kernels microbenchmark completed and added to database!"
 cd ../..
 
 # mark execution as completed

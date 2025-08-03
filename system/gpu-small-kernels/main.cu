@@ -4,10 +4,32 @@
 #include <cooperative_groups.h>
 #include <iomanip>
 #include <iostream>
+#include <vector>
+#include <string>
+#include <ctime>
 
 namespace cg = cooperative_groups;
 
 using namespace std;
+
+// global variables for SQL output mode
+int execution_id = 1;
+string gpu_uuid = "unknown_gpu";
+bool sql_output_mode = false;
+
+struct SmallKernelResult {
+  int problem_size;
+  double memory_size_kb;
+  double block_32_gbps;
+  double block_64_gbps;
+  double block_128_gbps;
+  double block_256_gbps;
+  double block_512_gbps;
+  double block_1024_gbps;
+};
+
+// global results storage
+vector<SmallKernelResult> kernel_results;
 
 const int64_t max_buffer_count = 512l * 1024 * 1024 + 2;
 double *dA, *dB;
@@ -84,7 +106,7 @@ __global__ void sync_kernel_atomic(volatile int *flags, T *__restrict__ A,
   }
 }
 
-void measureFunc(kernel_ptr_type func, int size, dim3 blockSize) {
+double measureFunc(kernel_ptr_type func, int size, dim3 blockSize) {
   MeasurementSeries time;
 
   dim3 grid = size / blockSize.x + 1;
@@ -200,21 +222,52 @@ void measureFunc(kernel_ptr_type func, int size, dim3 blockSize) {
       time.add((t2 - t1) / iters);
     }
   }
-  cout << fixed << setprecision(0) << setw(6) << setw(5)
-       << size * 2 * sizeof(double) / time.median() * 1e-9 << "  ";
-  ;
-  cout.flush();
+  
+  double bandwidth_gbps = size * 2 * sizeof(double) / time.median() * 1e-9;
+  
+  if (!sql_output_mode) {
+    cout << fixed << setprecision(0) << setw(6) << setw(5) << bandwidth_gbps << "  ";
+    cout.flush();
+  }
+  
+  return bandwidth_gbps;
 }
 
 int main(int argc, char **argv) {
-  if (argc > 1 && string(argv[1]) == "-graph") {
-    useCudaGraph = true;
+  // check for execution_id and gpu_uuid (SQL mode) first
+  bool found_sql_args = false;
+  for (int i = 1; i < argc; i++) {
+    // if find anumeric argument --> execution_id
+    char* endptr;
+    int potential_execution_id = strtol(argv[i], &endptr, 10);
+    if (*endptr == '\0' && potential_execution_id > 0) {
+      execution_id = potential_execution_id;
+      sql_output_mode = true;
+      found_sql_args = true;
+      
+      // check for gpu_uuid as next argument
+      if (i + 1 < argc) {
+        gpu_uuid = string(argv[i + 1]);
+        if (gpu_uuid.empty()) {
+          cerr << "Error: Empty gpu_uuid provided" << endl;
+          return 1;
+        }
+      }
+      break;
+    }
   }
-  if (argc > 1 && string(argv[1]) == "-pta") {
-    usePersistentThreadsAtomic = true;
-  }
-  if (argc > 1 && string(argv[1]) == "-pt-gsync") {
-    usePersistentThreadsGsync = true;
+  
+  // handle benchmark mode flags only if not in SQL mode
+  if (!found_sql_args) {
+    if (argc > 1 && string(argv[1]) == "-graph") {
+      useCudaGraph = true;
+    }
+    if (argc > 1 && string(argv[1]) == "-pta") {
+      usePersistentThreadsAtomic = true;
+    }
+    if (argc > 1 && string(argv[1]) == "-pt-gsync") {
+      usePersistentThreadsGsync = true;
+    }
   }
 
   GPU_ERROR(cudaMalloc(&dA, max_buffer_count * sizeof(double)));
@@ -230,13 +283,116 @@ int main(int argc, char **argv) {
   for (int d = 4 * 1024; d < 8 * 16 * 1024 * 1024;
        d += std::max((int)1, (int)(d * 0.06))) {
 
-    std::cout << d << "  " << d * sizeof(double) * 2 / 1024 << "kB  ";
+    SmallKernelResult result;
+    result.problem_size = d;
+    result.memory_size_kb = d * sizeof(double) * 2 / 1024.0;
 
-    for (int xblock = 32; xblock <= 1024; xblock *= 2) {
-      measureFunc(scale<double>, d, dim3(xblock, 1, 1));
+    if (!sql_output_mode) {
+      std::cout << d << "  " << d * sizeof(double) * 2 / 1024 << "kB  ";
     }
-    std::cout << "\n";
-    std::cout.flush();
+
+    // measure performance for each block size
+    result.block_32_gbps = measureFunc(scale<double>, d, dim3(32, 1, 1));
+    result.block_64_gbps = measureFunc(scale<double>, d, dim3(64, 1, 1));
+    result.block_128_gbps = measureFunc(scale<double>, d, dim3(128, 1, 1));
+    result.block_256_gbps = measureFunc(scale<double>, d, dim3(256, 1, 1));
+    result.block_512_gbps = measureFunc(scale<double>, d, dim3(512, 1, 1));
+    result.block_1024_gbps = measureFunc(scale<double>, d, dim3(1024, 1, 1));
+
+    kernel_results.push_back(result);
+
+    if (!sql_output_mode) {
+      std::cout << "\n";
+      std::cout.flush();
+    }
+  }
+
+  if (sql_output_mode) {
+    // gen SQL INSERT statement
+    cout << "-- GPU Small Kernels Benchmark Results\n";
+    cout << "-- Generated at: " << time(nullptr) << "\n\n";
+    
+    if (!kernel_results.empty()) {
+      // calc summary stats
+      double max_bandwidth = 0;
+      int optimal_block_size = 32;
+      int optimal_problem_size = 0;
+      
+      // find peak performance for each block size and overall
+      double block_peaks[6] = {0, 0, 0, 0, 0, 0}; // 32, 64, 128, 256, 512, 1024
+      
+      for (const auto& result : kernel_results) {
+        double bandwidths[6] = {
+          result.block_32_gbps, result.block_64_gbps, result.block_128_gbps,
+          result.block_256_gbps, result.block_512_gbps, result.block_1024_gbps
+        };
+        
+        for (int i = 0; i < 6; i++) {
+          if (bandwidths[i] > block_peaks[i]) {
+            block_peaks[i] = bandwidths[i];
+          }
+          if (bandwidths[i] > max_bandwidth) {
+            max_bandwidth = bandwidths[i];
+            optimal_block_size = 32 << i; // 32 * 2^i
+            optimal_problem_size = result.problem_size;
+          }
+        }
+      }
+      
+      cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
+      cout << "  " << execution_id << ", -- execution_id\n";
+      cout << "  '" << gpu_uuid << "', -- gpu_uuid\n";
+      cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'gpu_small_kernels'),\n";
+      cout << "  NOW(),\n";
+      cout << "  'system',\n";
+      cout << "  'small_kernel_performance',\n";
+      cout << "  '{\n";
+      cout << "    \"configurations\": [\n";
+      
+      for (size_t i = 0; i < kernel_results.size(); ++i) {
+        const auto& result = kernel_results[i];
+        cout << "      {\n";
+        cout << "        \"problem_size\": " << result.problem_size << ",\n";
+        cout << "        \"memory_size_kb\": " << fixed << setprecision(1) << result.memory_size_kb << ",\n";
+        cout << "        \"block_performances\": {\n";
+        cout << "          \"block_32\": " << fixed << setprecision(0) << result.block_32_gbps << ",\n";
+        cout << "          \"block_64\": " << result.block_64_gbps << ",\n";
+        cout << "          \"block_128\": " << result.block_128_gbps << ",\n";
+        cout << "          \"block_256\": " << result.block_256_gbps << ",\n";
+        cout << "          \"block_512\": " << result.block_512_gbps << ",\n";
+        cout << "          \"block_1024\": " << result.block_1024_gbps << "\n";
+        cout << "        }\n";
+        cout << "      }";
+        if (i < kernel_results.size() - 1) cout << ",";
+        cout << "\n";
+      }
+      
+      cout << "    ],\n";
+      cout << "    \"summary\": {\n";
+      cout << "      \"total_configurations\": " << kernel_results.size() << ",\n";
+      cout << "      \"size_range\": {\n";
+      cout << "        \"min_problem_size\": " << kernel_results.front().problem_size << ",\n";
+      cout << "        \"max_problem_size\": " << kernel_results.back().problem_size << ",\n";
+      cout << "        \"min_memory_kb\": " << fixed << setprecision(1) << kernel_results.front().memory_size_kb << ",\n";
+      cout << "        \"max_memory_kb\": " << kernel_results.back().memory_size_kb << "\n";
+      cout << "      },\n";
+      cout << "      \"peak_performance\": {\n";
+      cout << "        \"max_bandwidth_gbps\": " << fixed << setprecision(0) << max_bandwidth << ",\n";
+      cout << "        \"optimal_block_size\": " << optimal_block_size << ",\n";
+      cout << "        \"optimal_problem_size\": " << optimal_problem_size << ",\n";
+      cout << "        \"performance_by_block_size\": {\n";
+      cout << "          \"block_32_peak\": " << block_peaks[0] << ",\n";
+      cout << "          \"block_64_peak\": " << block_peaks[1] << ",\n";
+      cout << "          \"block_128_peak\": " << block_peaks[2] << ",\n";
+      cout << "          \"block_256_peak\": " << block_peaks[3] << ",\n";
+      cout << "          \"block_512_peak\": " << block_peaks[4] << ",\n";
+      cout << "          \"block_1024_peak\": " << block_peaks[5] << "\n";
+      cout << "        }\n";
+      cout << "      }\n";
+      cout << "    }\n";
+      cout << "  }'::jsonb\n";
+      cout << ");\n\n";
+    }
   }
 
   GPU_ERROR(cudaFree(dA));
