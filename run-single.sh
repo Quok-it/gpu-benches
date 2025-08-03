@@ -37,62 +37,67 @@ RETURNING execution_id;" | xargs)
 
 echo "Created execution with ID: $EXECUTION_ID"
 
-# gpu-stream benchmark
-echo ""
-echo "=== GPU Stream Microbenchmark ==="
-cd memory/gpu-stream
-make clean && make
-./cuda-stream "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-stream-results.sql"
+# # gpu-stream benchmark
+# echo ""
+# echo "=== GPU Stream Microbenchmark ==="
+# cd memory/gpu-stream
+# make clean && make
+# ./cuda-stream "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-stream-results.sql"
 
-# insert into database
-echo "Inserting GPU Stream results into database..."
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-stream-results.sql"
+# # insert into database
+# echo "Inserting GPU Stream results into database..."
+# PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-stream-results.sql"
 
-# mark execution as completed
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
-UPDATE benchmark_executions 
-SET status = 'completed', completed_at = NOW() 
-WHERE execution_id = $EXECUTION_ID;"
+# # mark execution as completed
+# PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+# UPDATE benchmark_executions 
+# SET status = 'completed', completed_at = NOW() 
+# WHERE execution_id = $EXECUTION_ID;"
 
-echo "GPU Stream microbenchmark completed and added to database!"
-cd ../..
+# echo "GPU Stream microbenchmark completed and added to database!"
+# cd ../..
 
-# gpu-cache benchmark (needs sudo)
-echo ""
-echo "=== GPU Cache Microbenchmark ==="
-cd memory/gpu-cache
-make clean && make
-if sudo -n true 2>/dev/null; then
-    sudo ./cuda-cache "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-cache-results.sql"
+# # gpu-cache benchmark (needs sudo)
+# echo ""
+# echo "=== GPU Cache Microbenchmark ==="
+# cd memory/gpu-cache
+# make clean && make
+# if sudo -n true 2>/dev/null; then
+#     sudo ./cuda-cache "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/gpu-cache-results.sql"
     
-    # insert into database
-    echo "Inserting GPU Cache results into database..."
-    PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-cache-results.sql"
+#     # insert into database
+#     echo "Inserting GPU Cache results into database..."
+#     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-cache-results.sql"
     
-    echo "GPU Cache microbenchmark completed and added to database!"
-else
-    echo "GPU Cache microbenchmark skipped (requires sudo)"
-fi
-cd ../..
+#     echo "GPU Cache microbenchmark completed and added to database!"
+# else
+#     echo "GPU Cache microbenchmark skipped (requires sudo)"
+# fi
+# cd ../..
 
-# gpu-l2-cache benchmark (needs sudo)
-echo ""
-echo "=== GPU L2 Cache Microbenchmark ==="
-cd memory/gpu-l2-cache
-make clean && make
-if sudo -n true 2>/dev/null; then
-    sudo ./cuda-l2-cache > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.txt"
-fi
-echo "GPU L2 Cache microbenchmark completed"
-cd ../..
+# # gpu-l2-cache benchmark (needs sudo)
+# echo ""
+# echo "=== GPU L2 Cache Microbenchmark ==="
+# cd memory/gpu-l2-cache
+# make clean && make
+# if sudo -n true 2>/dev/null; then
+#     sudo ./cuda-l2-cache > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results.txt"
+# fi
+# echo "GPU L2 Cache microbenchmark completed"
+# cd ../..
 
 # cuda-memcpy benchmark
 echo ""
 echo "=== CUDA Memory Copy Microbenchmark ==="
 cd memory/cuda-memcpy
 make clean && make
-./cuda-memcpy > "$RESULTS_DIR/gpu-benches/cuda-memcpy-results.txt"
-echo "CUDA Memory Copy microbenchmark completed"
+./cuda-memcpy "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-memcpy-results.sql"
+
+# insert into database
+echo "Inserting CUDA Memory Copy results into database..."
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-memcpy-results.sql"
+
+echo "CUDA Memory Copy microbenchmark completed and added to database!"
 cd ../..
 
 # Copy README files for reference
