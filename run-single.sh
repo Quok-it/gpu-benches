@@ -107,18 +107,32 @@ echo "Created execution with ID: $EXECUTION_ID"
 # echo "CUDA Memory Copy microbenchmark completed and added to database!"
 # cd ../..
 
-# cuda-matmul benchmark
+# # cuda-matmul benchmark
+# echo ""
+# echo "=== CUDA Matrix Multiplication Microbenchmark ==="
+# cd compute/cuda-matmul
+# make clean && make
+# ./cuda-matmul "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-matmul-results.sql"
+
+# # insert into database
+# echo "Inserting CUDA Matrix Multiplication results into database..."
+# PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-matmul-results.sql"
+
+# echo "CUDA Matrix Multiplication microbenchmark completed and added to database!"
+# cd ../..
+
+# cuda-incore benchmark
 echo ""
-echo "=== CUDA Matrix Multiplication Microbenchmark ==="
-cd compute/cuda-matmul
+echo "=== CUDA In-Core Compute Microbenchmark ==="
+cd compute/cuda-incore
 make clean && make
-./cuda-matmul "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-matmul-results.sql"
+./cuda-incore "$EXECUTION_ID" "$GPU_UUID" > "$RESULTS_DIR/gpu-benches/cuda-incore-results.sql"
 
 # insert into database
-echo "Inserting CUDA Matrix Multiplication results into database..."
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-matmul-results.sql"
+echo "Inserting CUDA In-Core results into database..."
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-incore-results.sql"
 
-echo "CUDA Matrix Multiplication microbenchmark completed and added to database!"
+echo "CUDA In-Core microbenchmark completed and added to database!"
 cd ../..
 
 # mark execution as completed
