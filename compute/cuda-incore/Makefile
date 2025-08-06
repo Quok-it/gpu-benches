@@ -6,9 +6,9 @@ CUDA_HOME :=  $(shell echo $(TEMP_NVCC) | rev |  cut -d'/' -f3- | rev)
 
 
 # internal flags
-NVCCFLAGS   := -std=c++14 -O3 -arch=sm_70 --compiler-options="-O2 -pipe -Wall -fopenmp -g" -Xcompiler -rdynamic --generate-line-info  -Xcompiler \"-Wl,-rpath,$(CUDA_HOME)/extras/CUPTI/lib64/\" -Xcompiler "-D_GLIBCXX_USE_CXX11_ABI=0" 
+NVCCFLAGS   := -std=c++14 -O3 -arch=sm_70 --compiler-options="-O2 -pipe -Wall -fopenmp -g" -Xcompiler -rdynamic --generate-line-info  -Xcompiler \"-Wl,-rpath,$(CUDA_HOME)/extras/CUPTI/lib64/\" -ccbin gcc-9 
 CCFLAGS     := 
-LDFLAGS     := -L/opt/cuda/lib64 -L$(CUDA_HOME)/extras/CUPTI/lib64 -lcupti -lcuda   -lnvidia-ml
+LDFLAGS     := -L/opt/cuda/lib64 -L$(CUDA_HOME)/extras/CUPTI/lib64 -lcupti -lcuda   -lnvidia-ml -lm -lstdc++
 NAME 		:= cuda-incore
 PREFIX		:= .
 INCLUDES 	:=  -I$(CUDA_HOME)/extras/CUPTI/include
