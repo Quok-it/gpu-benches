@@ -174,19 +174,50 @@ run_benchmarks_on_gpu() {
     echo "Completed all benchmarks for GPU $gpu_index"
 }
 
-# run benchmarks on all GPUs sequentially
+# run benchmarks on all GPUs in parallel
 echo ""
-echo "Starting multi-GPU benchmark execution..."
+echo "Starting parallel multi-GPU benchmark execution..."
+echo "Launching benchmarks on all ${#GPU_UUIDS[@]} GPUs simultaneously..."
+
+# array to store background process PIDs
+declare -a PIDS=()
+
+# launch benchmark function for each GPU in background
 for i in "${!GPU_UUIDS[@]}"; do
     echo ""
     echo "********************************************************"
-    echo "Starting benchmarks on GPU $i of ${#GPU_UUIDS[@]}"
+    echo "Launching benchmarks on GPU $i in background"
     echo "********************************************************"
-    run_benchmarks_on_gpu "$i" "${GPU_UUIDS[$i]}"
-    echo "********************************************************"
-    echo "Finished benchmarks on GPU $i"
-    echo "********************************************************"
+    (
+        # run benchmarks in subshell to isolate env
+        run_benchmarks_on_gpu "$i" "${GPU_UUIDS[$i]}"
+    ) &
+    
+    # store PID of background process
+    PIDS+=($!)
+    echo "GPU $i benchmarks launched with PID ${PIDS[$i]}"
 done
+
+echo ""
+echo "All GPU benchmark processes launched. Waiting for completion..."
+echo "Process PIDs: ${PIDS[*]}"
+
+# wait for all background processes to complete
+for i in "${!PIDS[@]}"; do
+    echo "Waiting for GPU $i benchmarks (PID ${PIDS[$i]}) to complete..."
+    wait ${PIDS[$i]}
+    exit_code=$?
+    if [ $exit_code -eq 0 ]; then
+        echo "✓ GPU $i benchmarks completed successfully"
+    else
+        echo "✗ GPU $i benchmarks failed with exit code $exit_code"
+    fi
+done
+
+echo ""
+echo "********************************************************"
+echo "All GPU benchmarks completed!"
+echo "********************************************************"
 
 # mark execution as completed
 echo ""
