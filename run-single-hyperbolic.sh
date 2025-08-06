@@ -40,6 +40,35 @@ RETURNING execution_id;" | xargs)
 
 echo "Created execution with ID: $EXECUTION_ID"
 
+# pre-build all benchmarks to avoid file conflicts
+echo ""
+echo "================================================"
+echo "======== Pre-building all benchmarks =========="
+echo "================================================"
+
+echo "Building gpu-stream..."
+cd memory/gpu-stream && make clean && make && cd ../..
+
+echo "Building gpu-cache..."
+cd memory/gpu-cache && make clean && make && cd ../..
+
+echo "Building gpu-l2-cache..."
+cd memory/gpu-l2-cache && make clean && make && cd ../..
+
+echo "Building cuda-memcpy..."
+cd memory/cuda-memcpy && make clean && make && cd ../..
+
+echo "Building cuda-matmul..."
+cd compute/cuda-matmul && make clean && make && cd ../..
+
+echo "Building cuda-incore..."
+cd compute/cuda-incore && make clean && make && cd ../..
+
+echo "Building gpu-small-kernels..."
+cd system/gpu-small-kernels && make clean && make && cd ../..
+
+echo "All benchmarks built successfully!"
+
 # function to run benchmarks on a single GPU
 run_benchmarks_on_gpu() {
     local gpu_index=$1
@@ -61,7 +90,6 @@ run_benchmarks_on_gpu() {
     echo ""
     echo "=== GPU Stream Microbenchmark (GPU $gpu_index) ==="
     cd memory/gpu-stream
-    make clean && make
     ./cuda-stream "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-stream-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -75,7 +103,6 @@ run_benchmarks_on_gpu() {
     echo ""
     echo "=== GPU Cache Microbenchmark (GPU $gpu_index) ==="
     cd memory/gpu-cache
-    make clean && make
     if sudo -n true 2>/dev/null; then
         sudo ./cuda-cache "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-cache-results-gpu$gpu_index.sql"
         
@@ -93,7 +120,6 @@ run_benchmarks_on_gpu() {
     echo ""
     echo "=== GPU L2 Cache Microbenchmark (GPU $gpu_index) ==="
     cd memory/gpu-l2-cache
-    make clean && make
     if sudo -n true 2>/dev/null; then
         sudo ./cuda-l2-cache "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results-gpu$gpu_index.sql"
         
@@ -111,7 +137,6 @@ run_benchmarks_on_gpu() {
     echo ""
     echo "=== CUDA Memory Copy Microbenchmark (GPU $gpu_index) ==="
     cd memory/cuda-memcpy
-    make clean && make
     ./cuda-memcpy "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-memcpy-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -129,7 +154,6 @@ run_benchmarks_on_gpu() {
     echo ""
     echo "=== CUDA Matrix Multiplication Microbenchmark (GPU $gpu_index) ==="
     cd compute/cuda-matmul
-    make clean && make
     ./cuda-matmul "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-matmul-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -143,7 +167,6 @@ run_benchmarks_on_gpu() {
     echo ""
     echo "=== CUDA In-Core Compute Microbenchmark (GPU $gpu_index) ==="
     cd compute/cuda-incore
-    make clean && make
     ./cuda-incore "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-incore-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -161,7 +184,6 @@ run_benchmarks_on_gpu() {
     echo ""
     echo "=== GPU Small Kernels System Microbenchmark (GPU $gpu_index) ==="
     cd system/gpu-small-kernels
-    make clean && make
     ./cuda-small-kernels "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-small-kernels-results-gpu$gpu_index.sql"
 
     # insert into database
