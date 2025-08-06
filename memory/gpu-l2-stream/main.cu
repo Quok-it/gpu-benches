@@ -203,7 +203,7 @@ void measureKernels(vector<pair<kernel_ptr_type, int>> kernels, int blockSize,
   GPU_ERROR(cudaGetDevice(&deviceId));
   GPU_ERROR(cudaGetDeviceProperties(&prop, deviceId));
   std::string deviceName = prop.name;
-  if (deviceName.starts_with("AMD Radeon RX 6")) {
+  if (deviceName.substr(0, 15) == "AMD Radeon RX 6") {
     prop.maxThreadsPerMultiProcessor = 1024;
     prop.multiProcessorCount *= 2;
   }
