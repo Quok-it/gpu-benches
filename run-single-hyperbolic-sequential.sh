@@ -27,7 +27,6 @@ cd "$BENCHMARK_DIR"
 # create results directory
 mkdir -p "$RESULTS_DIR/gpu-benches"
 
-# gpu-stream now uses SQL export, other benchmarks still use txt
 echo "Starting GPU benchmarks collection..."
 echo "Results will be saved to: $RESULTS_DIR/gpu-benches"
 
@@ -40,7 +39,7 @@ RETURNING execution_id;" | xargs)
 
 echo "Created execution with ID: $EXECUTION_ID"
 
-# pre-build all benchmarks to avoid file conflicts
+# pre-build all benchmarks once to avoid compilation issues
 echo ""
 echo "================================================"
 echo "======== Pre-building all benchmarks =========="
@@ -74,9 +73,7 @@ run_benchmarks_on_gpu() {
     local gpu_index=$1
     local gpu_uuid=$2
     
-    # start from benchmark directory
-    cd "$BENCHMARK_DIR"
-    
+    echo ""
     echo "================================================"
     echo "======== Running benchmarks on GPU $gpu_index ========"
     echo "========= UUID: $gpu_uuid ========="
@@ -92,7 +89,7 @@ run_benchmarks_on_gpu() {
     # gpu-stream benchmark
     echo ""
     echo "=== GPU Stream Microbenchmark (GPU $gpu_index) ==="
-    cd memory/gpu-stream
+    cd "$BENCHMARK_DIR/memory/gpu-stream"
     ./cuda-stream "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-stream-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -100,12 +97,12 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-stream-results-gpu$gpu_index.sql"
 
     echo "GPU Stream microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     # gpu-cache benchmark (needs sudo)
     echo ""
     echo "=== GPU Cache Microbenchmark (GPU $gpu_index) ==="
-    cd memory/gpu-cache
+    cd "$BENCHMARK_DIR/memory/gpu-cache"
     if sudo -n true 2>/dev/null; then
         sudo ./cuda-cache "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-cache-results-gpu$gpu_index.sql"
         
@@ -117,12 +114,12 @@ run_benchmarks_on_gpu() {
     else
         echo "GPU Cache microbenchmark skipped (requires sudo)"
     fi
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     # gpu-l2-cache benchmark (needs sudo)
     echo ""
     echo "=== GPU L2 Cache Microbenchmark (GPU $gpu_index) ==="
-    cd memory/gpu-l2-cache
+    cd "$BENCHMARK_DIR/memory/gpu-l2-cache"
     if sudo -n true 2>/dev/null; then
         sudo ./cuda-l2-cache "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results-gpu$gpu_index.sql"
         
@@ -134,12 +131,12 @@ run_benchmarks_on_gpu() {
     else
         echo "GPU L2 Cache microbenchmark skipped (requires sudo)"
     fi
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     # cuda-memcpy benchmark
     echo ""
     echo "=== CUDA Memory Copy Microbenchmark (GPU $gpu_index) ==="
-    cd memory/cuda-memcpy
+    cd "$BENCHMARK_DIR/memory/cuda-memcpy"
     ./cuda-memcpy "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-memcpy-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -147,7 +144,7 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-memcpy-results-gpu$gpu_index.sql"
 
     echo "CUDA Memory Copy microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     echo "================================================"
     echo "======== Compute Microbenchmarks ==============="
@@ -156,7 +153,7 @@ run_benchmarks_on_gpu() {
     # cuda-matmul benchmark
     echo ""
     echo "=== CUDA Matrix Multiplication Microbenchmark (GPU $gpu_index) ==="
-    cd compute/cuda-matmul
+    cd "$BENCHMARK_DIR/compute/cuda-matmul"
     ./cuda-matmul "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-matmul-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -164,12 +161,12 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-matmul-results-gpu$gpu_index.sql"
 
     echo "CUDA Matrix Multiplication microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     # cuda-incore benchmark
     echo ""
     echo "=== CUDA In-Core Compute Microbenchmark (GPU $gpu_index) ==="
-    cd compute/cuda-incore
+    cd "$BENCHMARK_DIR/compute/cuda-incore"
     ./cuda-incore "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-incore-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -177,7 +174,7 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-incore-results-gpu$gpu_index.sql"
 
     echo "CUDA In-Core microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     echo "================================================"
     echo "======== System Microbenchmarks ================"
@@ -186,7 +183,7 @@ run_benchmarks_on_gpu() {
     # gpu-small-kernels benchmark
     echo ""
     echo "=== GPU Small Kernels System Microbenchmark (GPU $gpu_index) ==="
-    cd system/gpu-small-kernels
+    cd "$BENCHMARK_DIR/system/gpu-small-kernels"
     ./cuda-small-kernels "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-small-kernels-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -194,49 +191,27 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-small-kernels-results-gpu$gpu_index.sql"
 
     echo "GPU Small Kernels microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
     
     echo "Completed all benchmarks for GPU $gpu_index"
 }
 
-# run benchmarks on all GPUs in parallel
+# run benchmarks on all GPUs sequentially
 echo ""
-echo "Starting parallel multi-GPU benchmark execution..."
-echo "Launching benchmarks on all ${#GPU_UUIDS[@]} GPUs simultaneously..."
+echo "Starting sequential multi-GPU benchmark execution..."
+echo "Running benchmarks on all ${#GPU_UUIDS[@]} GPUs one at a time..."
 
-# array to store background process PIDs
-declare -a PIDS=()
-
-# launch benchmark function for each GPU in background
+# run benchmark function for each GPU sequentially
 for i in "${!GPU_UUIDS[@]}"; do
     echo ""
     echo "********************************************************"
-    echo "Launching benchmarks on GPU $i in background"
+    echo "Running benchmarks on GPU $i"
     echo "********************************************************"
-    (
-        # run benchmarks in subshell to isolate env
-        run_benchmarks_on_gpu "$i" "${GPU_UUIDS[$i]}"
-    ) &
     
-    # store PID of background process
-    PIDS+=($!)
-    echo "GPU $i benchmarks launched with PID ${PIDS[$i]}"
-done
-
-echo ""
-echo "All GPU benchmark processes launched. Waiting for completion..."
-echo "Process PIDs: ${PIDS[*]}"
-
-# wait for all background processes to complete
-for i in "${!PIDS[@]}"; do
-    echo "Waiting for GPU $i benchmarks (PID ${PIDS[$i]}) to complete..."
-    wait ${PIDS[$i]}
-    exit_code=$?
-    if [ $exit_code -eq 0 ]; then
-        echo "✓ GPU $i benchmarks completed successfully"
-    else
-        echo "✗ GPU $i benchmarks failed with exit code $exit_code"
-    fi
+    # run benchmarks sequentially (no background process)
+    run_benchmarks_on_gpu "$i" "${GPU_UUIDS[$i]}"
+    
+    echo "✓ GPU $i benchmarks completed successfully"
 done
 
 echo ""
