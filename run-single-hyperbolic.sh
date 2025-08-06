@@ -47,25 +47,46 @@ echo "======== Pre-building all benchmarks =========="
 echo "================================================"
 
 echo "Building gpu-stream..."
-cd memory/gpu-stream && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/memory/gpu-stream"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: gpu-stream failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building gpu-cache..."
-cd memory/gpu-cache && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/memory/gpu-cache"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: gpu-cache failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building gpu-l2-cache..."
-cd memory/gpu-l2-cache && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/memory/gpu-l2-cache"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: gpu-l2-cache failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building cuda-memcpy..."
-cd memory/cuda-memcpy && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/memory/cuda-memcpy"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: cuda-memcpy failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building cuda-matmul..."
-cd compute/cuda-matmul && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/compute/cuda-matmul"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: cuda-matmul failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building cuda-incore..."
-cd compute/cuda-incore && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/compute/cuda-incore"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: cuda-incore failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building gpu-small-kernels..."
-cd system/gpu-small-kernels && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/system/gpu-small-kernels"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: gpu-small-kernels failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "All benchmarks built successfully!"
 
@@ -92,7 +113,7 @@ run_benchmarks_on_gpu() {
     # gpu-stream benchmark
     echo ""
     echo "=== GPU Stream Microbenchmark (GPU $gpu_index) ==="
-    cd memory/gpu-stream
+    cd "$BENCHMARK_DIR/memory/gpu-stream"
     ./cuda-stream "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-stream-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -100,12 +121,12 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-stream-results-gpu$gpu_index.sql"
 
     echo "GPU Stream microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     # gpu-cache benchmark (needs sudo)
     echo ""
     echo "=== GPU Cache Microbenchmark (GPU $gpu_index) ==="
-    cd memory/gpu-cache
+    cd "$BENCHMARK_DIR/memory/gpu-cache"
     if sudo -n true 2>/dev/null; then
         sudo ./cuda-cache "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-cache-results-gpu$gpu_index.sql"
         
@@ -117,12 +138,12 @@ run_benchmarks_on_gpu() {
     else
         echo "GPU Cache microbenchmark skipped (requires sudo)"
     fi
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     # gpu-l2-cache benchmark (needs sudo)
     echo ""
     echo "=== GPU L2 Cache Microbenchmark (GPU $gpu_index) ==="
-    cd memory/gpu-l2-cache
+    cd "$BENCHMARK_DIR/memory/gpu-l2-cache"
     if sudo -n true 2>/dev/null; then
         sudo ./cuda-l2-cache "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-l2-cache-results-gpu$gpu_index.sql"
         
@@ -134,12 +155,12 @@ run_benchmarks_on_gpu() {
     else
         echo "GPU L2 Cache microbenchmark skipped (requires sudo)"
     fi
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     # cuda-memcpy benchmark
     echo ""
     echo "=== CUDA Memory Copy Microbenchmark (GPU $gpu_index) ==="
-    cd memory/cuda-memcpy
+    cd "$BENCHMARK_DIR/memory/cuda-memcpy"
     ./cuda-memcpy "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-memcpy-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -147,7 +168,7 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-memcpy-results-gpu$gpu_index.sql"
 
     echo "CUDA Memory Copy microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     echo "================================================"
     echo "======== Compute Microbenchmarks ==============="
@@ -156,7 +177,7 @@ run_benchmarks_on_gpu() {
     # cuda-matmul benchmark
     echo ""
     echo "=== CUDA Matrix Multiplication Microbenchmark (GPU $gpu_index) ==="
-    cd compute/cuda-matmul
+    cd "$BENCHMARK_DIR/compute/cuda-matmul"
     ./cuda-matmul "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-matmul-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -164,12 +185,12 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-matmul-results-gpu$gpu_index.sql"
 
     echo "CUDA Matrix Multiplication microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     # cuda-incore benchmark
     echo ""
     echo "=== CUDA In-Core Compute Microbenchmark (GPU $gpu_index) ==="
-    cd compute/cuda-incore
+    cd "$BENCHMARK_DIR/compute/cuda-incore"
     ./cuda-incore "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/cuda-incore-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -177,7 +198,7 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/cuda-incore-results-gpu$gpu_index.sql"
 
     echo "CUDA In-Core microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
 
     echo "================================================"
     echo "======== System Microbenchmarks ================"
@@ -186,7 +207,7 @@ run_benchmarks_on_gpu() {
     # gpu-small-kernels benchmark
     echo ""
     echo "=== GPU Small Kernels System Microbenchmark (GPU $gpu_index) ==="
-    cd system/gpu-small-kernels
+    cd "$BENCHMARK_DIR/system/gpu-small-kernels"
     ./cuda-small-kernels "$EXECUTION_ID" "$gpu_uuid" > "$RESULTS_DIR/gpu-benches/gpu-small-kernels-results-gpu$gpu_index.sql"
 
     # insert into database
@@ -194,7 +215,7 @@ run_benchmarks_on_gpu() {
     PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$RESULTS_DIR/gpu-benches/gpu-small-kernels-results-gpu$gpu_index.sql"
 
     echo "GPU Small Kernels microbenchmark completed and added to database!"
-    cd ../..
+    cd "$BENCHMARK_DIR"
     
     echo "Completed all benchmarks for GPU $gpu_index"
 }

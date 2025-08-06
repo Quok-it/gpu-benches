@@ -46,25 +46,46 @@ echo "======== Pre-building all benchmarks =========="
 echo "================================================"
 
 echo "Building gpu-stream..."
-cd memory/gpu-stream && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/memory/gpu-stream"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: gpu-stream failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building gpu-cache..."
-cd memory/gpu-cache && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/memory/gpu-cache"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: gpu-cache failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building gpu-l2-cache..."
-cd memory/gpu-l2-cache && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/memory/gpu-l2-cache"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: gpu-l2-cache failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building cuda-memcpy..."
-cd memory/cuda-memcpy && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/memory/cuda-memcpy"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: cuda-memcpy failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building cuda-matmul..."
-cd compute/cuda-matmul && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/compute/cuda-matmul"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: cuda-matmul failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building cuda-incore..."
-cd compute/cuda-incore && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/compute/cuda-incore"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: cuda-incore failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "Building gpu-small-kernels..."
-cd system/gpu-small-kernels && make clean && make && cd ../..
+cd "$BENCHMARK_DIR/system/gpu-small-kernels"
+make clean && make
+if [ $? -ne 0 ]; then echo "ERROR: gpu-small-kernels failed to build"; exit 1; fi
+cd "$BENCHMARK_DIR"
 
 echo "All benchmarks built successfully!"
 
