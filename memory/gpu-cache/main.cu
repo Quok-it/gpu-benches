@@ -162,12 +162,9 @@ template <int N, int blockSize> void measure(bool sql_mode = false) {
   }
 }
 
-size_t constexpr expSeries(size_t N) {
-  size_t val = 32 * 512;
-  for (size_t i = 0; i < N; i++) {
-    val *= 1.17;
-  }
-  return (val / 512) * 512;
+constexpr size_t expSeries(size_t N) {
+  return N == 0 ? 32 * 512 : 
+         ((expSeries(N-1) * 117 / 100) / 512) * 512;
 }
 
 int main(int argc, char **argv) {

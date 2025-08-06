@@ -74,6 +74,9 @@ run_benchmarks_on_gpu() {
     local gpu_index=$1
     local gpu_uuid=$2
     
+    # Ensure we start from the benchmark directory
+    cd "$BENCHMARK_DIR"
+    
     echo "================================================"
     echo "======== Running benchmarks on GPU $gpu_index ========"
     echo "========= UUID: $gpu_uuid ========="
