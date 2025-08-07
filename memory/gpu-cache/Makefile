@@ -9,7 +9,7 @@ HIP_HOME :=  /opt/rocm
 #(shell echo $(TEMP_HIPCC) | rev |  cut -d'/' -f4- | rev)
 
 # internal flags
-NVCCFLAGS   := -std=c++14 -O3 -gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_80,code=compute_80 \
+NVCCFLAGS   := -std=c++14 -O3 -gencode=arch=compute_90,code=sm_90 -gencode=arch=compute_90,code=compute_90 \
 	       --compiler-options="-O2 -pipe -Wall -fopenmp -g" -Xcompiler -rdynamic --generate-line-info  -Xcompiler \"-Wl,-rpath,$(CUDA_HOME)/extras/CUPTI/lib64/\" -Xcompiler \"-Wl,-rpath,$(CUDA_HOME)/lib64/\" -ccbin gcc-9
 CCFLAGS     := 
 LDFLAGS     := -L$(CUDA_HOME)/lib64 -L$(CUDA_HOME)/extras/CUPTI/lib64 -lcupti -lcuda   -lnvidia-ml -lnvperf_host -lnvperf_target -lm -lstdc++
