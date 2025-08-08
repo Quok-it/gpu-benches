@@ -21,6 +21,8 @@ done
 # set default directories if not provided
 BENCHMARK_DIR=${BENCHMARK_DIR:-$(pwd)}
 RESULTS_DIR=${RESULTS_DIR:-$(pwd)/results}
+# max number of GPUs to run in parallel (override with env var)
+MAX_PARALLEL_GPUS=${MAX_PARALLEL_GPUS:-2}
 
 cd "$BENCHMARK_DIR"
 
@@ -217,22 +219,44 @@ run_benchmarks_on_gpu() {
     echo "Completed all benchmarks for GPU $gpu_index"
 }
 
-# run benchmarks on all GPUs sequentially
-echo ""
-echo "Starting sequential multi-GPU benchmark execution..."
-echo "Running benchmarks on all ${#GPU_UUIDS[@]} GPUs one at a time..."
+# helper function: wait until fewer than MAX_PARALLEL_GPUS background jobs are running
+wait_for_available_slot() {
+    # maintain a list of active PIDs in the array 'PIDS'
+    while [ ${#PIDS[@]} -ge "$MAX_PARALLEL_GPUS" ]; do
+        # prune finished PIDs
+        for idx in "${!PIDS[@]}"; do
+            if ! kill -0 "${PIDS[$idx]}" 2>/dev/null; then
+                unset 'PIDS[$idx]'
+            fi
+        done
+        # reindex array to close gaps
+        PIDS=("${PIDS[@]}")
+        if [ ${#PIDS[@]} -ge "$MAX_PARALLEL_GPUS" ]; then
+            sleep 1
+        fi
+    done
+}
 
-# run benchmark function for each GPU sequentially
+# run benchmarks on all GPUs with bounded parallelism
+echo ""
+echo "Starting parallel multi-GPU benchmark execution..."
+echo "Running benchmarks on all ${#GPU_UUIDS[@]} GPUs with up to $MAX_PARALLEL_GPUS in parallel..."
+
+declare -a PIDS=()
+
 for i in "${!GPU_UUIDS[@]}"; do
+    wait_for_available_slot
     echo ""
     echo "********************************************************"
-    echo "Running benchmarks on GPU $i"
+    echo "Launching benchmarks on GPU $i (background)"
     echo "********************************************************"
-    
-    # run benchmarks sequentially (no background process)
-    run_benchmarks_on_gpu "$i" "${GPU_UUIDS[$i]}"
-    
-    echo "✓ GPU $i benchmarks completed successfully"
+    run_benchmarks_on_gpu "$i" "${GPU_UUIDS[$i]}" &
+    PIDS+=($!)
+done
+
+# wait for all background jobs to finish
+for pid in "${PIDS[@]}"; do
+    wait "$pid"
 done
 
 echo ""
