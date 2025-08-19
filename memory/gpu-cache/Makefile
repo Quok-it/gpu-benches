@@ -1,5 +1,9 @@
 NVCC := nvcc
 
+# Optional host compiler override. Example: make CCBIN=g++-12
+CCBIN ?=
+CCBIN_FLAG = $(if $(CCBIN),-ccbin $(CCBIN),)
+
 TEMP_NVCC := $(shell which nvcc)
 CUDA_HOME :=  $(shell echo $(TEMP_NVCC) | rev |  cut -d'/' -f3- | rev)
 
@@ -10,7 +14,7 @@ HIP_HOME :=  /opt/rocm
 
 # internal flags
 NVCCFLAGS   := -std=c++14 -O3 -gencode=arch=compute_90,code=sm_90 -gencode=arch=compute_90,code=compute_90 \
-	       --compiler-options="-O2 -pipe -Wall -fopenmp -g" -Xcompiler -rdynamic --generate-line-info  -Xcompiler \"-Wl,-rpath,$(CUDA_HOME)/extras/CUPTI/lib64/\" -Xcompiler \"-Wl,-rpath,$(CUDA_HOME)/lib64/\" -ccbin gcc-9
+               --compiler-options="-O2 -pipe -Wall -fopenmp -g" -Xcompiler -rdynamic --generate-line-info  -Xcompiler \"-Wl,-rpath,$(CUDA_HOME)/extras/CUPTI/lib64/\" -Xcompiler \"-Wl,-rpath,$(CUDA_HOME)/lib64/\" $(CCBIN_FLAG)
 CCFLAGS     := 
 LDFLAGS     := -L$(CUDA_HOME)/lib64 -L$(CUDA_HOME)/extras/CUPTI/lib64 -lcupti -lcuda   -lnvidia-ml -lnvperf_host -lnvperf_target -lm -lstdc++
 NAME 		:= cache

@@ -18,3 +18,7 @@
 # Results files
 results/
 *.sql
+
+# Files 
+run-single-hyperbolic-sequential.sh
+run-single-hyperbolic.sh
