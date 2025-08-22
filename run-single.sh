@@ -30,10 +30,29 @@ echo "Results will be saved to: $RESULTS_DIR/gpu-benches"
 
 # create new execution entry and get execution_id
 echo "Creating new benchmark execution entry..."
-EXECUTION_ID=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -q -c "
-INSERT INTO benchmark_executions (execution_name, scale_type, benchmark_suite, provider, gpu_type_filter, status, started_at, total_gpus) 
-VALUES ('7 microbenchmarks', 'gpu', 'microbenchmarks', 'unknown_provider', 'unknown', 'running', NOW(), 1) 
-RETURNING execution_id;" | xargs)
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+INSERT INTO benchmark_executions (
+    execution_id,
+    execution_name,
+    scale_type,
+    benchmark_suite,
+    provider,
+    gpu_type_filter,
+    status,
+    started_at,
+    total_gpus
+)
+VALUES (
+    '$EXECUTION_ID',
+    '7 microbenchmarks',
+    'gpu',
+    'microbenchmarks',
+    'unknown_provider',
+    'unknown',
+    'running',
+    NOW(),
+    1
+);"
 
 echo "Created execution with ID: $EXECUTION_ID"
 
