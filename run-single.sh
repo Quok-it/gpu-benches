@@ -184,7 +184,7 @@ cd ../..
 PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
 UPDATE benchmark_executions 
 SET status = 'completed', completed_at = NOW() 
-WHERE execution_id = $EXECUTION_ID;"
+WHERE execution_id = '$EXECUTION_ID';"
 
 # Copy README files for reference
 echo ""
