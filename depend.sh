@@ -20,4 +20,7 @@ if ! command -v nvcc &> /dev/null; then
     echo "Common locations: /usr/local/cuda/bin, /opt/cuda/bin"
 fi
 
+# Install postgres
+apt-get install -y postgresql-client
+
 echo "Dependencies installation completed!"
