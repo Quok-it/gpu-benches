@@ -15,6 +15,12 @@ fi
 
 echo "Using GPU UUID: $GPU_UUID"
 
+# Make sure GPU in DB
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+INSERT INTO gpus (gpu_uuid, gpu_name)
+VALUES ('$GPU_UUID', 'Unknown GPU')
+ON CONFLICT (gpu_uuid) DO NOTHING;"
+
 # set default directories if not provided
 BENCHMARK_DIR=${BENCHMARK_DIR:-$(pwd)}
 RESULTS_DIR=${RESULTS_DIR:-$(pwd)/results}
@@ -75,7 +81,7 @@ PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB
 PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
 UPDATE benchmark_executions 
 SET status = 'completed', completed_at = NOW() 
-WHERE execution_id = $EXECUTION_ID;"
+WHERE execution_id = '$EXECUTION_ID';"
 
 echo "GPU Stream microbenchmark completed and added to database!"
 cd ../..
