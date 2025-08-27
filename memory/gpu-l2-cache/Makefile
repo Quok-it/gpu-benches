@@ -1,11 +1,11 @@
-NVCC := nvcc
-
 # Optional host compiler override. Example: make CCBIN=g++-12
 CCBIN ?=
 CCBIN_FLAG = $(if $(CCBIN),-ccbin $(CCBIN),)
 
-TEMP_NVCC := $(shell which nvcc)
-CUDA_HOME :=  $(shell echo $(TEMP_NVCC) | rev |  cut -d'/' -f3- | rev)
+# Try multiple methods to find CUDA installation
+TEMP_NVCC := $(shell which nvcc 2>/dev/null || echo /usr/local/cuda/bin/nvcc)
+CUDA_HOME := $(shell if [ -x "$(TEMP_NVCC)" ]; then echo $(TEMP_NVCC) | rev | cut -d'/' -f3- | rev; else echo /usr/local/cuda; fi)
+NVCC := $(TEMP_NVCC)
 
 HIP_HOME :=  /opt/rocm
 
