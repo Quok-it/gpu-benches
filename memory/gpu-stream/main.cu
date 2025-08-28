@@ -245,15 +245,15 @@ BenchmarkResult measureKernels(vector<pair<kernel_ptr_type, int>> kernels, int b
 }
 
 int main(int argc, char **argv) {
-  int execution_id = 1; // default fallback
+  string execution_id = "1"; // default fallback
   string gpu_uuid = "unknown_gpu"; // default fallback
   bool sql_output_mode = false; // flag to control output format
   
   // parse execution_id from command line
   if (argc > 1) {
-    execution_id = atoi(argv[1]);
-    if (execution_id <= 0) {
-      cerr << "Error: Invalid execution_id provided: " << argv[1] << endl;
+    execution_id = string(argv[1]);
+    if (execution_id.empty()) {
+      cerr << "Error: Empty execution_id provided" << endl;
       return 1;
     }
     sql_output_mode = true; // if execution_id provided, assume SQL mode
@@ -331,7 +331,7 @@ int main(int argc, char **argv) {
     
     if (!validResults.empty()) {
       cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
-      cout << "  " << execution_id << ", -- execution_id\n";
+      cout << "  '" << execution_id << "', -- execution_id\n";
       cout << "  '" << gpu_uuid << "', -- gpu_uuid\n";
       cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'gpu_stream'),\n";
       cout << "  NOW(),\n";

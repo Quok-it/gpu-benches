@@ -13,7 +13,7 @@
 using namespace std;
 
 // global variables for SQL output mode
-int execution_id = 1;
+string execution_id = "1";
 string gpu_uuid = "unknown_gpu";
 bool sql_output_mode = false;
 
@@ -211,9 +211,9 @@ template <typename T> void measureTabular(int maxWarpCount, const string& precis
 int main(int argc, char **argv) {
   // parse execution_id from command line
   if (argc > 1) {
-    execution_id = atoi(argv[1]);
-    if (execution_id <= 0) {
-      cerr << "Error: Invalid execution_id provided: " << argv[1] << endl;
+    execution_id = string(argv[1]);
+    if (execution_id.empty()) {
+      cerr << "Error: Empty execution_id provided" << endl;
       return 1;
     }
     sql_output_mode = true; // if execution_id provided, assume SQL mode
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
       }
       
       cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
-      cout << "  " << execution_id << ", -- execution_id\n";
+      cout << "  '" << execution_id << "', -- execution_id\n";
       cout << "  '" << gpu_uuid << "', -- gpu_uuid\n";
       cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'cuda_incore'),\n";
       cout << "  NOW(),\n";

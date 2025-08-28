@@ -13,7 +13,7 @@ namespace cg = cooperative_groups;
 using namespace std;
 
 // global variables for SQL output mode
-int execution_id = 1;
+string execution_id = "1";
 string gpu_uuid = "unknown_gpu";
 bool sql_output_mode = false;
 
@@ -237,10 +237,9 @@ int main(int argc, char **argv) {
   // check for execution_id and gpu_uuid (SQL mode) first
   bool found_sql_args = false;
   for (int i = 1; i < argc; i++) {
-    // if find anumeric argument --> execution_id
-    char* endptr;
-    int potential_execution_id = strtol(argv[i], &endptr, 10);
-    if (*endptr == '\0' && potential_execution_id > 0) {
+    // if find non-empty argument --> execution_id
+    string potential_execution_id = string(argv[i]);
+    if (!potential_execution_id.empty()) {
       execution_id = potential_execution_id;
       sql_output_mode = true;
       found_sql_args = true;
@@ -340,7 +339,7 @@ int main(int argc, char **argv) {
       }
       
       cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
-      cout << "  " << execution_id << ", -- execution_id\n";
+      cout << "  '" << execution_id << "', -- execution_id\n";
       cout << "  '" << gpu_uuid << "', -- gpu_uuid\n";
       cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'gpu_small_kernels'),\n";
       cout << "  NOW(),\n";

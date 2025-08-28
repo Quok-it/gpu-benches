@@ -24,7 +24,7 @@ cublasLtHandle_t cublaslt_handle;
 unsigned int gpu_clock = 0;
 
 // SQL mode globals
-int execution_id = 1;
+string execution_id = "1";
 string gpu_uuid = "unknown_gpu";
 bool sql_output_mode = false;
 
@@ -560,7 +560,7 @@ void run_all_benchmarks() {
         
         if (!results.empty()) {
             cout << "INSERT INTO gpu_scale_results (execution_id, gpu_uuid, benchmark_id, timestamp, test_category, test_name, results) VALUES (\n";
-            cout << "  " << execution_id << ", -- execution_id\n";
+            cout << "  '" << execution_id << "', -- execution_id\n";
             cout << "  '" << gpu_uuid << "', -- gpu_uuid\n";
             cout << "  (SELECT benchmark_id FROM benchmark_definitions WHERE benchmark_name = 'cuda_matmul'),\n";
             cout << "  NOW(),\n";
@@ -685,9 +685,9 @@ void run_all_benchmarks() {
 int main(int argc, char **argv) {
     // parse execution_id from command line
     if (argc > 1) {
-        execution_id = atoi(argv[1]);
-        if (execution_id <= 0) {
-            cerr << "Error: Invalid execution_id provided: " << argv[1] << endl;
+        execution_id = string(argv[1]);
+        if (execution_id.empty()) {
+            cerr << "Error: Empty execution_id provided" << endl;
             return 1;
         }
         sql_output_mode = true; // if args provided --> should be sql
