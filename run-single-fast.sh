@@ -1,6 +1,5 @@
-# runs gpu-stream, cuda-memcpy, cuda-matmul, cuda-incore on all available GPUs in parallel
-
 #!/bin/bash
+# runs gpu-stream, cuda-memcpy, cuda-matmul, cuda-incore on all available GPUs in parallel
 set -e
 
 # load env variables from .env file
@@ -56,22 +55,17 @@ run_benchmarks_on_gpu() {
     # set CUDA_VISIBLE_DEVICES to only show this GPU
     export CUDA_VISIBLE_DEVICES=$gpu_index
     
-    # create separate working directory for this GPU to avoid conflicts
-    local gpu_work_dir="$benchmark_dir/gpu_$gpu_index"
-    mkdir -p "$gpu_work_dir"
-    
-    # copy source files to GPU-specific directory and compile
-    echo "[GPU $gpu_index] Setting up workspace..."
-    
     # memory microbenchmarks
     echo "[GPU $gpu_index] ======== Memory Microbenchmarks ================"
     
     # gpu-stream microbenchmark
     echo "[GPU $gpu_index] === GPU Stream Microbenchmark ==="
-    mkdir -p "$gpu_work_dir/memory/gpu-stream"
-    cp -r memory/gpu-stream/* "$gpu_work_dir/memory/gpu-stream/"
-    cd "$gpu_work_dir/memory/gpu-stream"
-    make clean && make
+    (
+        cd memory/gpu-stream
+        flock -x 200
+        make clean && make
+    ) 200>/tmp/gpu-stream-build.lock
+    cd memory/gpu-stream
     echo "[GPU $gpu_index] Running GPU Stream benchmark and inserting results into database..."
     ./cuda-stream "$execution_id" "$gpu_uuid" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
     echo "[GPU $gpu_index] GPU Stream microbenchmark completed!"
@@ -79,10 +73,12 @@ run_benchmarks_on_gpu() {
     
     # cuda-memcpy microbenchmark
     echo "[GPU $gpu_index] === CUDA Memory Copy Microbenchmark ==="
-    mkdir -p "$gpu_work_dir/memory/cuda-memcpy"
-    cp -r memory/cuda-memcpy/* "$gpu_work_dir/memory/cuda-memcpy/"
-    cd "$gpu_work_dir/memory/cuda-memcpy"
-    make clean && make
+    (
+        cd memory/cuda-memcpy
+        flock -x 200
+        make clean && make
+    ) 200>/tmp/cuda-memcpy-build.lock
+    cd memory/cuda-memcpy
     echo "[GPU $gpu_index] Running CUDA Memory Copy benchmark and inserting results into database..."
     ./cuda-memcpy "$execution_id" "$gpu_uuid" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
     echo "[GPU $gpu_index] CUDA Memory Copy microbenchmark completed!"
@@ -93,10 +89,12 @@ run_benchmarks_on_gpu() {
     
     # cuda-matmul microbenchmark
     echo "[GPU $gpu_index] === CUDA Matrix Multiplication Microbenchmark ==="
-    mkdir -p "$gpu_work_dir/compute/cuda-matmul"
-    cp -r compute/cuda-matmul/* "$gpu_work_dir/compute/cuda-matmul/"
-    cd "$gpu_work_dir/compute/cuda-matmul"
-    make clean && make
+    (
+        cd compute/cuda-matmul
+        flock -x 200
+        make clean && make
+    ) 200>/tmp/cuda-matmul-build.lock
+    cd compute/cuda-matmul
     echo "[GPU $gpu_index] Running CUDA Matrix Multiplication benchmark and inserting results into database..."
     ./cuda-matmul "$execution_id" "$gpu_uuid" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
     echo "[GPU $gpu_index] CUDA Matrix Multiplication microbenchmark completed!"
@@ -104,17 +102,16 @@ run_benchmarks_on_gpu() {
     
     # cuda-incore microbenchmark
     echo "[GPU $gpu_index] === CUDA In-Core Compute Microbenchmark ==="
-    mkdir -p "$gpu_work_dir/compute/cuda-incore"
-    cp -r compute/cuda-incore/* "$gpu_work_dir/compute/cuda-incore/"
-    cd "$gpu_work_dir/compute/cuda-incore"
-    make clean && make
+    (
+        cd compute/cuda-incore
+        flock -x 200
+        make clean && make
+    ) 200>/tmp/cuda-incore-build.lock
+    cd compute/cuda-incore
     echo "[GPU $gpu_index] Running CUDA In-Core benchmark and inserting results into database..."
     ./cuda-incore "$execution_id" "$gpu_uuid" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
     echo "[GPU $gpu_index] CUDA In-Core microbenchmark completed!"
     cd "$benchmark_dir"
-    
-    # cleanup GPU-specific workspace
-    rm -rf "$gpu_work_dir"
     
     echo "[GPU $gpu_index] All benchmarks completed on GPU: $gpu_uuid"
 }
