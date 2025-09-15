@@ -2,7 +2,7 @@
 # runs gpu-stream, cuda-memcpy, cuda-matmul, cuda-incore on all available GPUs in parallel
 set -e
 
-# load env variables from .env file CORRECTLY
+# load env variables from .env file CORRECTLY tysm
 if [ -f .env ]; then
   set -a
   . ./.env
