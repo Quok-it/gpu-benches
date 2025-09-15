@@ -4,9 +4,10 @@ set -e
 
 # load env variables from .env file
 if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+  set -a
+  . ./.env
+  set +a
 fi
-
 # get all GPU UUIDs
 GPU_UUIDS=($(nvidia-smi -q | grep -i "GPU UUID" | awk '{print $NF}'))
 if [ ${#GPU_UUIDS[@]} -eq 0 ]; then
