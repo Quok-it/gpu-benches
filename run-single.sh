@@ -8,6 +8,43 @@ if [ -f .env ]; then
   . ./.env
   set +a
 fi
+
+# sanitize DB and locale env vars (strip surrounding quotes, set defaults)
+sanitize_quote_var() {
+  local input="$1"
+  # remove surrounding double quotes repeatedly
+  while [[ $input == "\""* && $input == *"\"" ]]; do
+    input="${input#\"}"
+    input="${input%\"}"
+  done
+  # remove surrounding single quotes repeatedly
+  while [[ $input == "'"* && $input == *"'" ]]; do
+    input="${input#'}"
+    input="${input%'}"
+  done
+  printf '%s' "$input"
+}
+
+# sanitize DB connection vars
+DB_HOST=$(sanitize_quote_var "${DB_HOST:-}")
+DB_PORT=$(sanitize_quote_var "${DB_PORT:-}")
+DB_USER=$(sanitize_quote_var "${DB_USER:-}")
+DB_NAME=$(sanitize_quote_var "${DB_NAME:-}")
+DB_PASSWORD=$(sanitize_quote_var "${DB_PASSWORD:-}")
+
+# ensure numeric DB_PORT, default to 5432
+if ! [[ "$DB_PORT" =~ ^[0-9]+$ ]]; then
+  DB_PORT=5432
+fi
+
+# sanitize and ensure UTF-8 locales to avoid perl locale warnings
+LANG=$(sanitize_quote_var "${LANG:-}")
+LC_ALL=$(sanitize_quote_var "${LC_ALL:-}")
+LC_CTYPE=$(sanitize_quote_var "${LC_CTYPE:-}")
+LANG=${LANG:-C.UTF-8}
+LC_ALL=${LC_ALL:-C.UTF-8}
+LC_CTYPE=${LC_CTYPE:-C.UTF-8}
+export LANG LC_ALL LC_CTYPE
 # get all GPU UUIDs
 GPU_UUIDS=($(nvidia-smi -q | grep -i "GPU UUID" | awk '{print $NF}'))
 if [ ${#GPU_UUIDS[@]} -eq 0 ]; then
