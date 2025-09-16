@@ -76,6 +76,10 @@ else
     echo "Using execution ID from environment: $EXECUTION_ID"
 fi
 
+# sanitize EXECUTION_ID (strip any surrounding quotes)
+EXECUTION_ID=$(sanitize_quote_var "$EXECUTION_ID")
+export EXECUTION_ID
+
 # set default directory if not provided
 BENCHMARK_DIR=${BENCHMARK_DIR:-$(pwd)}
 
