@@ -81,6 +81,35 @@ BENCHMARK_DIR=${BENCHMARK_DIR:-$(pwd)}
 
 cd "$BENCHMARK_DIR"
 
+
+# detect GPU arch and update Makefiles' -arch flag
+
+## TODO: add more GPU types
+echo "Detecting GPU type to set CUDA -arch flag..."
+GPU_NAMES=$(nvidia-smi --query-gpu=name --format=csv,noheader | tr '\n' ' ')
+TARGET_SM=""
+if echo "$GPU_NAMES" | grep -qi "H100"; then
+  TARGET_SM="sm_90"
+elif echo "$GPU_NAMES" | grep -qi "A100"; then
+  TARGET_SM="sm_80"
+fi
+
+if [ -n "$TARGET_SM" ]; then
+  echo "Setting CUDA -arch=${TARGET_SM} in Makefiles..."
+  for mf in \
+    memory/cuda-memcpy/Makefile \
+    compute/cuda-matmul/Makefile \
+    compute/cuda-incore/Makefile
+  do
+    if [ -f "$mf" ]; then
+      sed -i -E "s/-arch=sm_[0-9]+/-arch=${TARGET_SM}/g" "$mf"
+    fi
+  done
+else
+  echo "GPU type not recognized (looking for A100 or H100). Leaving Makefiles unchanged."
+fi
+
+
 # run all benchmarks on specific GPU
 run_benchmarks_on_gpu() {
     local gpu_index=$1
