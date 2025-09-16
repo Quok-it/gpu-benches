@@ -76,6 +76,10 @@ else
     echo "Using execution ID from environment: $EXECUTION_ID"
 fi
 
+# sanitize EXECUTION_ID (strip any surrounding quotes)
+EXECUTION_ID=$(sanitize_quote_var "$EXECUTION_ID")
+export EXECUTION_ID
+
 # set default directory if not provided
 BENCHMARK_DIR=${BENCHMARK_DIR:-$(pwd)}
 
@@ -134,7 +138,7 @@ run_benchmarks_on_gpu() {
     ) 200>/tmp/gpu-stream-build.lock
     cd memory/gpu-stream
     echo "[GPU $gpu_index] Running GPU Stream benchmark and inserting results into database..."
-    ./cuda-stream "$execution_id" "$gpu_uuid" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
+    ./cuda-stream "$execution_id" "$gpu_uuid" | { printf "SET app.execution_id = '%s';\n" "$execution_id"; cat; } | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
     echo "[GPU $gpu_index] GPU Stream microbenchmark completed!"
     cd "$benchmark_dir"
     
@@ -147,7 +151,7 @@ run_benchmarks_on_gpu() {
     ) 200>/tmp/cuda-memcpy-build.lock
     cd memory/cuda-memcpy
     echo "[GPU $gpu_index] Running CUDA Memory Copy benchmark and inserting results into database..."
-    ./cuda-memcpy "$execution_id" "$gpu_uuid" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
+    ./cuda-memcpy "$execution_id" "$gpu_uuid" | { printf "SET app.execution_id = '%s';\n" "$execution_id"; cat; } | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
     echo "[GPU $gpu_index] CUDA Memory Copy microbenchmark completed!"
     cd "$benchmark_dir"
     
@@ -163,7 +167,7 @@ run_benchmarks_on_gpu() {
     ) 200>/tmp/cuda-matmul-build.lock
     cd compute/cuda-matmul
     echo "[GPU $gpu_index] Running CUDA Matrix Multiplication benchmark and inserting results into database..."
-    ./cuda-matmul "$execution_id" "$gpu_uuid" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
+    ./cuda-matmul "$execution_id" "$gpu_uuid" | { printf "SET app.execution_id = '%s';\n" "$execution_id"; cat; } | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
     echo "[GPU $gpu_index] CUDA Matrix Multiplication microbenchmark completed!"
     cd "$benchmark_dir"
     
@@ -176,7 +180,7 @@ run_benchmarks_on_gpu() {
     ) 200>/tmp/cuda-incore-build.lock
     cd compute/cuda-incore
     echo "[GPU $gpu_index] Running CUDA In-Core benchmark and inserting results into database..."
-    ./cuda-incore "$execution_id" "$gpu_uuid" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
+    ./cuda-incore "$execution_id" "$gpu_uuid" | { printf "SET app.execution_id = '%s';\n" "$execution_id"; cat; } | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
     echo "[GPU $gpu_index] CUDA In-Core microbenchmark completed!"
     cd "$benchmark_dir"
     
