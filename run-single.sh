@@ -103,7 +103,8 @@ if [ -n "$TARGET_SM" ]; then
   for mf in \
     memory/cuda-memcpy/Makefile \
     compute/cuda-matmul/Makefile \
-    compute/cuda-incore/Makefile
+    compute/cuda-incore/Makefile \
+    memory/gpu-stream/Makefile
   do
     if [ -f "$mf" ]; then
       sed -i -E "s/-arch=sm_[0-9]+/-arch=${TARGET_SM}/g" "$mf"
