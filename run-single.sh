@@ -96,6 +96,8 @@ if echo "$GPU_NAMES" | grep -qi "H100"; then
   TARGET_SM="sm_90"
 elif echo "$GPU_NAMES" | grep -qi "A100"; then
   TARGET_SM="sm_80"
+elif echo "$GPU_NAMES" | grep -qi "RTX 4090"; then
+  TARGET_SM="sm_89"
 fi
 
 if [ -n "$TARGET_SM" ]; then
